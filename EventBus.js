@@ -1,4 +1,4 @@
-var EventBusClass = {};
+ var EventBusClass = {};
 EventBusClass = function() {
 	this.listeners = {};
 };
