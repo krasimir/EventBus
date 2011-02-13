@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+	<head>
+		<title>Events</title>
+
+		<script type="text/javascript" language="javascript" src="../src/EventBus.js"></script>
+		<script type="text/javascript" language="javascript">
+		
+			window.onload = function() {
+
+				// ******************************************************************************************
+				function myFunction(event) {
+					log("myFunction type=" + event.type);
+				}
+				EventBus.addEventListener("my_function_event", myFunction);
+				EventBus.dispatch("my_function_event");
+
+				// ******************************************************************************************
+				var TestClass1 = function() {
+					this.className = "TestClass1";
+					this.callback = function(event) {
+						log(this.className + " = type:" + event.type + " / dispatcher:" + event.target.className);
+					}
+				};
+				var TestClass2 = function() {
+					this.className = "TestClass2";
+					this.dispatchOurEvent = function() {
+						EventBus.dispatch("callback_event", this);
+					}
+				};
+				var t1 = new TestClass1();
+				var t2 = new TestClass2();
+				EventBus.addEventListener("callback_event", t1.callback, t1);
+				t2.dispatchOurEvent();
+
+				// ******************************************************************************************
+				var TestClass1 = function() {
+					this.className = "TestClass1";
+					this.doSomething = function(event, param1, param2) {
+						log(this.className + ".doSomething");
+						log("type=" + event.type);
+						log("params=" + param1 + param2);
+						log("coming from=" + event.target.className);
+					}
+				};
+				var TestClass2 = function() {
+					this.className = "TestClass2";
+					this.ready = function() {
+						EventBus.dispatch("custom_event", this, "javascript events", " are really useful");
+					}
+				};
+
+				var t1 = new TestClass1();
+				var t2 = new TestClass2();
+
+				EventBus.addEventListener("custom_event", t1.doSomething, t1);
+				t2.ready();	
+				
+				}
+				
+				function log(str) {
+					document.getElementById("log").innerHTML += str + "<br />"
+				}
+		
+		</script>
+		
+	</head>
+	<body>
+		<div id="log">
+			
+		</div>
+	</body>
+</html>
