@@ -31,6 +31,18 @@ EventBusClass.prototype = {
 			this.listeners[type] = newArray;
 		}
 	},
+	hasEventListener:function(type, callback, scope) {
+		if(typeof this.listeners[type] != "undefined") {
+			var numOfCallbacks = this.listeners[type].length;
+			for(var i=0; i<numOfCallbacks; i++) {
+				var listener = this.listeners[type][i];
+				if(listener.scope == scope && listener.callback == callback) {
+					return true;
+				}
+			}
+		}
+		return false;
+	},
 	dispatch:function(type, target) {
 		var numOfListeners = 0;
 		var event = {
