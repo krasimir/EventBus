@@ -1,6 +1,8 @@
-Simple JavaScript class for managing events in JavaScript created by Krasimir Tsonev (http://krasimirtsonev.com)
+## Simple JavaScript class for managing events in JavaScript
+
 Features:
-a) addEventListener - adding a listener
-b) removeEventListener - removing a listener
-c) dispatch - dispatching event
-d) getEvents - for debugging purpose, it just prints out the added listeners
+- addEventListener - adding a listener
+- removeEventListener - removing a listener
+- hasEventListener - checking for a listener
+- dispatch - dispatching event
+- getEvents - for debugging purpose, it just prints out the added listeners
