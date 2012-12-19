@@ -8,18 +8,19 @@
 		
 			window.onload = function() {
 
-				// ******************************************************************************************
+				// ******************************************************************************************				
 				function myFunction(event) {
-					log("myFunction type=" + event.type);
+					console.log("myFunction type=" + event.type);
 				}
 				EventBus.addEventListener("my_function_event", myFunction);
 				EventBus.dispatch("my_function_event");
 
 				// ******************************************************************************************
+				console.log("\n");
 				var TestClass1 = function() {
 					this.className = "TestClass1";
 					this.callback = function(event) {
-						log(this.className + " = type:" + event.type + " / dispatcher:" + event.target.className);
+						console.log(this.className + " = type:" + event.type + " / dispatcher:" + event.target.className);
 					}
 				};
 				var TestClass2 = function() {
@@ -34,13 +35,14 @@
 				t2.dispatchOurEvent();
 
 				// ******************************************************************************************
+				console.log("\n");
 				var TestClass1 = function() {
 					this.className = "TestClass1";
 					this.doSomething = function(event, param1, param2) {
-						log(this.className + ".doSomething");
-						log("type=" + event.type);
-						log("params=" + param1 + param2);
-						log("coming from=" + event.target.className);
+						console.log(this.className + ".doSomething");
+						console.log("type=" + event.type);
+						console.log("params=" + param1 + param2);
+						console.log("coming from=" + event.target.className);
 					}
 				};
 				var TestClass2 = function() {
@@ -54,19 +56,25 @@
 				var t2 = new TestClass2();
 
 				EventBus.addEventListener("custom_event", t1.doSomething, t1);
-				t2.ready();	
-				
+				t2.ready();
+
+				// ******************************************************************************************
+				console.log("\n");
+				var winterHandler = function() {
+					console.log("arguments", arguments);
 				}
+				EventBus.addEventListener("let-it-snow", winterHandler, null, "and happy", "new year");
+				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
+				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
+				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
 				
-				function log(str) {
-					document.getElementById("log").innerHTML += str + "<br />"
-				}
+			}
 		
 		</script>
 		
 	</head>
 	<body>
-		<div id="log">
+		<div id="console.log">
 			
 		</div>
 	</body>

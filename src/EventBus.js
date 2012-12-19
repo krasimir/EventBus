@@ -60,9 +60,9 @@ EventBusClass.prototype = {
 			var numOfCallbacks = this.listeners[type].length;
 			for(var i=0; i<numOfCallbacks; i++) {
 				var listener = this.listeners[type][i];
-				if(listener && listener.callback) {
-					listener.args = args.concat(listener.args);
-					listener.callback.apply(listener.scope, listener.args);
+				if(listener && listener.callback) {					
+					var concatArgs = args.concat(listener.args);
+					listener.callback.apply(listener.scope, concatArgs);
 					numOfListeners += 1;
 				}
 			}
