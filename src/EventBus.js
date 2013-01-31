@@ -34,6 +34,9 @@ EventBusClass.prototype = {
 	hasEventListener:function(type, callback, scope) {
 		if(typeof this.listeners[type] != "undefined") {
 			var numOfCallbacks = this.listeners[type].length;
+			if(callback === undefined && scope === undefined){
+				return numOfCallbacks > 0;
+			}
 			for(var i=0; i<numOfCallbacks; i++) {
 				var listener = this.listeners[type][i];
 				if(listener.scope == scope && listener.callback == callback) {
