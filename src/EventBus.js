@@ -39,7 +39,7 @@ EventBusClass.prototype = {
 			}
 			for(var i=0; i<numOfCallbacks; i++) {
 				var listener = this.listeners[type][i];
-				if(listener.scope == scope && listener.callback == callback) {
+				if((scope ? listener.scope == scope : true) && listener.callback == callback) {
 					return true;
 				}
 			}
