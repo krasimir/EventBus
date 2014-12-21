@@ -80,7 +80,3 @@
     EventBus.addEventListener("custom_event", t1.doSomething, t1);
     t2.ready();
 
-
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/krasimir/eventbus/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
-
