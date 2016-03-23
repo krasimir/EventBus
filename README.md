@@ -4,7 +4,7 @@
 
 ### In a browser
 
-Download [eventbus.min.js](https://github.com/krasimir/EventBus/blob/master/lib/eventbus.min.js) and add it to your page.
+Download [eventbus.min.js](https://raw.githubusercontent.com/krasimir/EventBus/master/lib/eventbus.min.js) and add it to your page.
 
 ### In Node
 
