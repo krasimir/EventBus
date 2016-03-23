@@ -1,0 +1,31 @@
+{
+  "name": "eventbusjs",
+  "version": "0.1.0",
+  "description": "Managing events with JavaScript",
+  "main": "lib/eventbus.min.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "build": "uglifyjs ./src/EventBus.js -o ./lib/eventbus.min.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/krasimir/EventBus.git"
+  },
+  "keywords": [
+    "event",
+    "bus",
+    "dispatch",
+    "listen"
+  ],
+  "author": "Krasimir Tsonev",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/krasimir/EventBus/issues"
+  },
+  "homepage": "https://github.com/krasimir/EventBus",
+  "devDependencies": {
+    "uglify-js": "2.6.2"
+  }
+}

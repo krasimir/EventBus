@@ -1,5 +1,23 @@
 # Simple JavaScript class for managing events in JavaScript
 
+## Installation
+
+### In a browser
+
+Download [eventbus.min.js](https://github.com/krasimir/EventBus/blob/master/lib/eventbus.min.js) and add it to your page.
+
+### In Node
+
+```
+npm i eventbusjs -S
+```
+
+And then in your code:
+
+```js
+var EventBus = require('eventbusjs');
+```
+
 ## API
 
 ### `addEventListener`
