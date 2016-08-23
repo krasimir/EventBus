@@ -121,3 +121,24 @@ EventBus.addEventListener("custom_event", t1.doSomething, t1);
 t2.ready();
 ```
 
+## Example of usage EventBus.removeEventListener
+
+To remove EventListener you have to pass same instance of callback
+```js
+
+/* Wrong - callback functions are different instances */
+EventBus.addEventListener('EXAMPLE_EVENT', function() {
+    console.log('example callback');
+});
+EventBus.removeEventListener('EXAMPLE_EVENT', function() {
+    console.log('example callback');
+});
+
+/* Correct - callback function is the same instance */
+EventBus.addEventListener('EXAMPLE_EVENT', function() {
+    console.log('example callback');
+});
+EventBus.removeEventListener('EXAMPLE_EVENT', function() {
+    console.log('example callback');
+});
+```
