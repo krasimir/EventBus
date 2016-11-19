@@ -63,7 +63,7 @@ For debugging purpose, it prints out the added listeners.
 ```js
 EventBus.getEvents()
 ```
-    
+
 ## Usage
 
 ```js
@@ -135,10 +135,9 @@ EventBus.removeEventListener('EXAMPLE_EVENT', function() {
 });
 
 /* Correct - callback function is the same instance */
-EventBus.addEventListener('EXAMPLE_EVENT', function() {
+var handler = function() {
     console.log('example callback');
-});
-EventBus.removeEventListener('EXAMPLE_EVENT', function() {
-    console.log('example callback');
-});
+};
+EventBus.addEventListener('EXAMPLE_EVENT', handler);
+EventBus.removeEventListener('EXAMPLE_EVENT', handler);
 ```
