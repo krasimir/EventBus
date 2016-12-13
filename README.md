@@ -27,6 +27,17 @@ var EventBus = require('eventbusjs');
 // @callback - function
 // @scope - the scope where the @callback is defined
 EventBus.addEventListener(type, callback, scope)
+//or
+EventBus.on(type,callback,scope)
+//or
+EventBus.bind(type,callback,scope)
+//or
+EventBus.once(type,callback,scope)
+//or
+//support regex and multi event types
+EventBus.on(['click','change',/\w_click/],function(event,value) {
+  
+});
 ```
 
 ### `removeEventListener`
@@ -36,6 +47,10 @@ EventBus.addEventListener(type, callback, scope)
 // @callback - function
 // @scope - the scope where the @callback is defined
 EventBus.removeEventListener(type, callback, scope)
+//or
+EventBus.off(type,callback,scope)
+//or
+EventBus.unbind(type,callback,scope)
 ```
 
 ### `hasEventListener`
@@ -45,6 +60,8 @@ EventBus.removeEventListener(type, callback, scope)
 // @callback - function
 // @scope - the scope where the @callback is defined
 EventBus.hasEventListener(type, callback, scope)
+//or
+EventBus.has(type,calback,scope)
 ```
 
 ### `dispatch`
@@ -54,6 +71,10 @@ EventBus.hasEventListener(type, callback, scope)
 // @target - the caller
 // @args - pass as many arguments as you want
 EventBus.dispatch(type, target, args ...)
+//or
+EventBus.trigger(type,target,args...)
+//or
+EventBus.emit(type,target,args...)
 ```
 
 ### `getEvents`
@@ -72,6 +93,8 @@ function myFunction(event) {
 }
 EventBus.addEventListener("my_function_event", myFunction);
 EventBus.dispatch("my_function_event");
+//EventBus.trigger("my_function_event");
+//EventBus.emit("my_function_event");
 ```
 
 ## Keeping the scope
