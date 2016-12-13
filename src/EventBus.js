@@ -215,13 +215,15 @@
         emit: function (type) {
             // console.log("emit arguments:",arguments);
 
-            type = processMultiTypes.call(this, type, this.emit, slice(arguments));
+            var args = slice(arguments);
+            type = processMultiTypes.call(this, type, this.emit, args);
             if (type == this)return this;
 
             var event = {
-                type: type
+                type: type,
+                target: args.length > 1 ? args[1] : {}//compatibility with older versions
             };
-            var args = [event].concat(slice(arguments, 1));
+            args = [event].concat(slice(arguments, 1));
             // console.log("emit arguments:",arguments," listener arguments:",args);
             var listeners = [].concat(typeof this.listeners[type] == "undefined" ? [] : this.listeners[type]);
 
@@ -276,7 +278,7 @@
     EventBusClass.prototype.bind = EventBusClass.prototype.addEventListener = EventBusClass.prototype.on;
     EventBusClass.prototype.unbind = EventBusClass.prototype.removeEventListener = EventBusClass.prototype.off;
     EventBusClass.prototype.trigger = EventBusClass.prototype.dispatch = EventBusClass.prototype.emit;
-    EventBusClass.prototype.hasEventListener  = EventBusClass.prototype.has;
+    EventBusClass.prototype.hasEventListener = EventBusClass.prototype.has;
 
     var EventBus = new EventBusClass();
     return EventBus;

@@ -90,11 +90,28 @@ EventBus.getEvents()
 ```js
 function myFunction(event) {
   console.log("myFunction type=" + event.type);
+  //can stop event
+  event.stop();
+  //can obtain listener arguments
+  console.log(event.args);
+  
+  //can access scope by this
+  console.log(this);
+  
 }
-EventBus.addEventListener("my_function_event", myFunction);
+var scope ={
+    
+};
+EventBus.addEventListener("my_function_event", myFunction,scope,1,2,3...);
+//or
+EventBus.on("my_function_event",myFunction,scope,1,2,3...);
+
+// dispatch event
 EventBus.dispatch("my_function_event");
-//EventBus.trigger("my_function_event");
-//EventBus.emit("my_function_event");
+//or
+EventBus.trigger("my_function_event");
+//or
+EventBus.emit("my_function_event");
 ```
 
 ## Keeping the scope

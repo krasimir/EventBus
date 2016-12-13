@@ -55,7 +55,7 @@
 				var t1 = new TestClass1();
 				var t2 = new TestClass2();
 
-				EventBus.addEventListener("custom_event", t1.doSomething, t1);
+				EventBus.on("custom_event", t1.doSomething, t1);
 				t2.ready();
 
 				// ******************************************************************************************
@@ -63,9 +63,9 @@
 				var winterHandler = function() {
 					console.log("arguments", arguments);
 				}
-				EventBus.addEventListener("let-it-snow", winterHandler, null, "and happy", "new year");
-				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
-				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
+				EventBus.on("let-it-snow", winterHandler, null, "and happy", "new year");
+				EventBus.emit("let-it-snow", null, "merry", "christmas");
+				EventBus.trigger("let-it-snow", null, "merry", "christmas");
 				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
 				
 			}
