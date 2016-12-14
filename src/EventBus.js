@@ -72,7 +72,8 @@
 
             var isRegExpType = type instanceof RegExp;
             var eventType = isRegExpType ? type.toString() : type;
-            var args = slice(arguments, 3);
+            var args = slice(arguments);
+            // console.log("listener args is ",args);
             var listener = {//create listener stub
                 scope: scope || {},
                 callback: callback,
@@ -104,7 +105,9 @@
                 callback.apply(this, slice(arguments));
                 bus.off(type, proxyCallback, scope);
             };
-            return bus.on(type, proxyCallback, scope);
+            var args = slice(arguments);
+            args[1] = proxyCallback;
+            return bus.on.apply(bus, args);
         },
         /**
          *  EventBus.off("click");  //remove all click listeners
@@ -231,6 +234,10 @@
                 var isStop = false;
                 event.stop = function () {
                     isStop = true;
+                };
+                event.getArg = function (index) {
+                    if (event.args == undefined || !event.args instanceof Array || event.args.length - 1 < index)return undefined;
+                    return event.args[index];
                 };
                 iterator(listeners, function (index, listener, listeners, iterator) {
                     if (listener && listener.callback) {
