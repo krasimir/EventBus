@@ -50,7 +50,15 @@
         }
         return type;
     }
-
+    /**
+     * id generator
+     */
+    var nextId = (function () {
+        var _id = 1000;
+        return function () {
+            return ++_id;
+        }
+    })();
 
     var EventBusClass = {};
     EventBusClass = function () {
@@ -75,6 +83,7 @@
             var args = slice(arguments);
             // console.log("listener args is ",args);
             var listener = {//create listener stub
+                id: nextId(),
                 scope: scope || {},
                 callback: callback,
                 args: args,
@@ -162,6 +171,58 @@
                 this.regexListeners = newArray;
             }
             return this;
+        },
+        /**
+         * redirect("click","onClick",function(event){return true;});
+         * redirect("click","onClick");
+         * redirect("click",function(event){return "onClick"},function(event){return true;});
+         * redirect(/\w*_click/,"onClick",/btn[0-9]+_click/);
+         * @param origin
+         * @param endpoint
+         * @param condition
+         * @return {EventBusClass}
+         */
+        redirect: function (origin, endpoint, condition) {
+            var scope = this.redirectScope = this.redirectScope || {};
+            var bus = this;
+            if (origin == endpoint)return bus;
+            this.on(origin, (function (endpoint, condition, nextId) {
+                if (condition == undefined)
+                    condition = function () {
+                        return true;
+                    };
+                if (condition instanceof RegExp) {
+                    var exp = condition;
+                    condition = function (event) {
+                        return exp.test(event.type);
+                    }
+                }
+                if (typeof condition == "function") {
+                    var stack = [];
+                    return function (event) {
+                        var args = slice(arguments);
+                        if (condition.apply(this, args)) {
+                            args[0] = typeof endpoint == "function" ? endpoint.apply(this, args) : endpoint;
+                            if (stack.indexOf(nextId) < 0 && args[0] != event.type)//is redirect looping
+                            {
+                                stack.push(nextId);
+                                bus.emit.apply(bus, args);
+                                stack.pop();
+                            } else {
+                                console.log("==>origin:", origin.toString(),
+                                    " ==>endpoint:", endpoint.toString(),
+                                    " redirect is looping! this event is lost.");
+                            }
+                        }
+                    }
+                }
+                else {
+                    return function (event) {
+                        console.log("redirect condition must set function or RegExp!")
+                    }
+                }
+            })(endpoint, condition, nextId()), scope);
+            return bus;
         },
         /**
          * EventBus.has("click")
@@ -277,7 +338,6 @@
                 str += listener.scope && listener.scope.className ? listener.scope.className : "anonymous";
                 str += " listen for '" + listener.eventType + "'\n";
             });
-
             return str;
         }
     };
