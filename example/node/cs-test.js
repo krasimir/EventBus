@@ -3,6 +3,8 @@
  */
 var EventBus = require('../../lib/eventbus.min');
 
+EventBus.DEFAULT.SHOW_LOG = false;
+
 var Order = function (id, name, consumer) {
     this.id = id;
     this.name = name;
@@ -16,13 +18,19 @@ var Producer = function (order) {
 Producer.prototype = {
 
     make: function () {
+        console.log("============================", "start make ", this.order.id, "==============================");
         EventBus.emit("make/" + this.order.consumer, this.order);
+        console.log("============================", "end make ", this.order.id, "==============================");
     },
     package: function () {
+        console.log("============================", "start package ", this.order.id, "==============================");
         EventBus.emit("package/" + this.order.consumer, this.order);
+        console.log("============================", "end package ", this.order.id, "==============================");
     },
     send: function () {
+        console.log("============================", "start send ", this.order.id, "==============================");
         EventBus.emit("send/" + this.order.consumer, this.order);
+        console.log("============================", "end send ", this.order.id, "==============================");
     }
 };
 
@@ -39,7 +47,7 @@ Consumer.prototype = {
         console.log(this.name, "'s order is packaging. order id=", order.id, " order name:" + order.name);
     },
     onReceive: function (event, order) {
-        console.log(this.name, "'s order is received. order id=", order.id, " order name:" + order.name);
+        console.log(this.name, "is ready to receive order goods. order id=", order.id, " order name:" + order.name);
     },
 
     init: function (once) {
@@ -52,12 +60,16 @@ Consumer.prototype = {
 
 };
 
+EventBus.on(/QC\/\w*/, function (event, order) {
+    console.log(order.id, " quality testing");
+});
+
 EventBus.on(/\w*\/\w*/, monitor, {name: "kerry"}, /make\/\w*/);
 
 EventBus.on(/\w*\/\w*/, monitor, {name: "peter"}, /package\/\w*/);
 
-EventBus.on("make package receive",function (event,order) {
-    console.log(order.id,/*" ",order.name,*/" is ",event.type);
+EventBus.on("make package receive", function (event, order) {
+    console.log(order.id, /*" ",order.name,*/" state is ", event.type);
 });
 
 function monitor(event, order) {
@@ -67,9 +79,44 @@ function monitor(event, order) {
     }
 }
 
-EventBus.redirect(/(\w*)\/(\w*)/,function(event){return /(\w*)\/(\w*)/.exec(event.type)[1];});
+EventBus.redirect(/(\w*)\/(\w*)/, function (event) {
+    return /(\w*)\/(\w*)/.exec(event.type)[1];
+});
 
-EventBus.redirect(/send\/(\w*)/,function(event){return "receive/"+/(\w*)\/(\w*)/.exec(event.type)[2];});
+EventBus.redirect(/send\/(\w*)/, function (event) {//map one to one
+    return "receive/" + /(\w*)\/(\w*)/.exec(event.type)[2];
+});
+
+EventBus.redirect(/send\/(\w*)/, function (event) { //map one to more
+    var consumer = /(\w*)\/(\w*)/.exec(event.type)[2];
+    return ["trans/" + consumer, "print/" + consumer, "QC/" + consumer];
+});
+
+//map more to one
+EventBus.redirect({
+    origin: [/QC\/\w*/],
+    endpoint: "qc-report-collect",
+    processor: function (event, order) {
+        console.log("redirect processor for ", event.id, "==>",
+            "origin:", event.getOriginType(), " endpoint:", event.getEndpoint());
+
+        if (order.consumer == "bona") event.setEmitArgs([order, "passed"]);
+    }
+});
+
+var qcReport = {
+    orders: [],
+    passed: [],
+    print: function () {
+        console.log("qc checked order count :", this.orders.length);
+        console.log("qc passed order count :", this.passed.length);
+    }
+};
+
+EventBus.on("qc-report-collect", function (event, order, checkState) {
+    this.orders.push(order);
+    if (checkState == "passed") this.passed.push(order);
+}, qcReport);
 
 new Consumer("peter");
 new Consumer("kerry");
@@ -82,3 +129,5 @@ for (var i = 0; i < 4; i++) {
     maker.package();
     maker.send();
 }
+
+qcReport.print();
