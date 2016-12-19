@@ -80,25 +80,33 @@ EventBus.redirect(/(\w*)\/(\w*)/, function (event) {
     return /(\w*)\/(\w*)/.exec(event.type)[1];
 });
 
-EventBus.redirect(/send\/(\w*)/, function (event) {//map one to one
+EventBus.redirect(/trans\/(\w*)/, function (event) {//map one to one
     return "receive/" + /(\w*)\/(\w*)/.exec(event.type)[2];
 });
 
 EventBus.redirect(/send\/(\w*)/, function (event) { //map one to more
     var consumer = /(\w*)\/(\w*)/.exec(event.type)[2];
-    return ["trans/" + consumer, "print/" + consumer, "QC/" + consumer];
+    return ["print/" + consumer, "QC/" + consumer];
 });
 
 //map more to one
 EventBus.redirect(
     [/QC\/\w*/],//origin event type
-    "qc-report-collect",//endpoint
+    "qc-report",//endpoint
     undefined,//condition
     function (event, order) { //processor
         console.log("redirect processor for ", event.id, "==>",
             "origin:", event.getOriginType(), " endpoint:", event.getEndpoint());
 
         if (order.consumer == "bona") event.setEmitArgs([order, "passed"]);
+    }
+);
+
+EventBus.redirect(
+    "qc-report",function (event,order) {
+        return "trans/"+order.consumer;
+    },function (event,order,state) {
+        return state==="passed";
     }
 );
 
@@ -111,7 +119,7 @@ var qcReport = {
     }
 };
 
-EventBus.on("qc-report-collect", function (event, order, checkState) {
+EventBus.on("qc-report", function (event, order, checkState) {
     this.orders.push(order);
     if (checkState == "passed") this.passed.push(order);
 }, qcReport);
