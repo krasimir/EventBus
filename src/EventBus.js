@@ -232,6 +232,8 @@
                                             event.getEndpoint = function () {
                                                 return type;
                                             };
+                                            event.endpoints = event.endpoints || [];
+                                            event.endpoints.push(type);
                                             processor.apply(scope, args);
                                             emitArgs = (emitArgs instanceof Array) ? [""].concat(emitArgs) : [].concat(args);
                                             emitArgs[0] = type;
@@ -313,22 +315,20 @@
          * @returns {EventBusClass}
          */
         emit: function (type) {
-            // console.log("emit arguments:",arguments);
-
+            var eventFlow = this.eventFlow = this.eventFlow || [];//event stack.
             var args = slice(arguments);
             type = processMultiTypes(this, this.emit, type, args);
             if (type == this)return this;
-
             var event = {
                 id: type + "#" + nextId(),
                 type: type,
                 target: args.length > 1 ? args[1] : {}//compatibility with older versions
             };
             args = [event].concat(slice(arguments, 1));
-            // console.log("emit arguments:",arguments," listener arguments:",args);
             var listeners = [].concat(typeof this.listeners[type] == "undefined" ? [] : this.listeners[type]);
 
             function dispatchEvent(listeners) {
+                var stack = [].concat(eventFlow);
                 var isStop = false;
                 event.stop = function () {
                     isStop = true;
@@ -337,6 +337,22 @@
                     if (event.args == undefined || !event.args instanceof Array || event.args.length - 1 < index)return undefined;
                     return event.args[index];
                 };
+                event.flow = {
+                    getEarlyEvent: function () {
+                        return stack.slice(0, 1).shift();
+                    },
+                    getClosestEvent: function () {
+                        return stack.slice(0, stack.length - 1).pop();
+                    },
+                    getAllEvents: function () {
+                        return stack.slice(0);
+                    }
+                };
+
+                event.getLevel = function () {
+                    return stack.length-1;
+                };
+
                 iterator(listeners, function (index, listener, listeners, iterator) {
                     if (listener && listener.callback) {
                         var listenerArgs = [].concat(args);
@@ -358,11 +374,12 @@
                     listeners.push(listener);
                 }
             });
-
+            eventFlow.push(event);
             dispatchEvent(listeners);
+            eventFlow.pop();
             return this;
         },
-        getEvents: function () {
+        getAllEvents: function () {
             var str = "";
             for (var type in this.listeners) {
                 var numOfCallbacks = this.listeners[type].length;

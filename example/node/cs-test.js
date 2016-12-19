@@ -44,6 +44,14 @@ Consumer.prototype = {
         console.log(this.name, "'s order is packaging. order id=", order.id, " order name:" + order.name);
     },
     onReceive: function (event, order) {
+        /*event.flow.getAllEvents().forEach(function (v, i) {
+         console.log(v);
+         });*/
+        var p = event;
+        while (p) {//print event flow
+            console.log("event level ",p.getLevel()," level object:",p);
+            p = p.flow.getClosestEvent();
+        }
         console.log(this.name, "is ready to receive order goods. order id=", order.id, " order name:" + order.name);
     },
 
