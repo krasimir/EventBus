@@ -1,6 +1,3 @@
-/**
- * Created by bona on 2016/12/14.
- */
 var EventBus = require('../../lib/eventbus.min');
 
 EventBus.DEFAULT.SHOW_LOG = false;
@@ -93,16 +90,17 @@ EventBus.redirect(/send\/(\w*)/, function (event) { //map one to more
 });
 
 //map more to one
-EventBus.redirect({
-    origin: [/QC\/\w*/],
-    endpoint: "qc-report-collect",
-    processor: function (event, order) {
+EventBus.redirect(
+    [/QC\/\w*/],//origin event type
+    "qc-report-collect",//endpoint
+    undefined,//condition
+    function (event, order) { //processor
         console.log("redirect processor for ", event.id, "==>",
             "origin:", event.getOriginType(), " endpoint:", event.getEndpoint());
 
         if (order.consumer == "bona") event.setEmitArgs([order, "passed"]);
     }
-});
+);
 
 var qcReport = {
     orders: [],

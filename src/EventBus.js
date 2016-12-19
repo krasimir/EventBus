@@ -1,7 +1,3 @@
-/**
- * Created by bona on 2016/12/12.
- */
-
 (function (root, factory) {
     if (typeof exports === 'object' && typeof module === 'object')
         module.exports = factory();
@@ -19,7 +15,9 @@
             stop: function (result) {
                 this.isStopped = true;
                 this.result = result;
-            }
+            },
+            isStopped: false,
+            result: undefined
         };
         for (var i in array) {
             callback(i, array[i], array, iterator);
@@ -30,26 +28,26 @@
 
     function slice(array, start, end) {
         if (start > array.length)return [];
-        return [].slice.call(array, start == undefined ? 0 : start, end == undefined ? array.length : end) || [];
+        return [].slice.call(array, start === undefined ? 0 : start, end === undefined ? array.length : end) || [];
     }
 
-    function processMultiTypes(type, callback, args) {
+    function processMultiTypes(busObject, busMethod, type, args) {
         if (typeof type == "string" || type instanceof Array) {
             var types = type;
             if (typeof type == "string") types = type.trim().split(EventBusClass.DEFAULT.EVENT_TYPE_SPLIT_EXP);
             if (types.length > 1) {
-                var that = this;
                 iterator(types, function (index, type) {
                     args[0] = type;
-                    callback.apply(that, args);
+                    busMethod.apply(busObject, args);
                 });
-                return that;
+                return busObject;
             } else {
                 type = types[0];
             }
         }
         return type;
     }
+
     /**
      * id generator
      */
@@ -75,14 +73,14 @@
          * @returns {EventBusClass}
          */
         on: function (type, callback, scope) {
-            type = processMultiTypes.call(this, type, this.on, slice(arguments));
+            type = processMultiTypes(this, this.on, type, slice(arguments));
             if (type == this)return this;
 
             var isRegExpType = type instanceof RegExp;
             var eventType = isRegExpType ? type.toString() : type;
             var args = slice(arguments);
-            if(EventBusClass.DEFAULT.SHOW_LOG)
-                console.log("on=>listener args is ",args);
+            if (EventBusClass.DEFAULT.SHOW_LOG)
+                console.log("on=>listener args is ", args);
             var listener = {//create listener stub
                 id: nextId(),
                 scope: scope || {},
@@ -132,7 +130,7 @@
          */
         off: function (type, callback, scope) {
             //support EventBus.off(['click',/click/]);
-            type = processMultiTypes.call(this, type, this.off, [undefined, callback, scope]);
+            type = processMultiTypes(this, this.off, type, [undefined, callback, scope]);
             if (type == this)return this;
 
             var isRegExpType = type instanceof RegExp;
@@ -144,7 +142,7 @@
             }
             var allCallback = callback == undefined;
             var allScope = scope == undefined;
-            if(EventBusClass.DEFAULT.SHOW_LOG)
+            if (EventBusClass.DEFAULT.SHOW_LOG)
                 console.log("off=>off event type:", type, " all callback:", allCallback, " all scope:", allScope);
             // console.log("callback:", callback, " scope:", scope);
             function isRemove(listener) {
@@ -165,7 +163,7 @@
                 }
             } else {
                 iterator(this.regexListeners, function (index, listener) {
-                    if (!(listener.eventType == eventType && isRemove(listener))) newArray.push(listener);
+                    if (!(listener.eventType === eventType && isRemove(listener))) newArray.push(listener);
                     else {
                         // console.log("remove listener:", type, listener);
                     }
@@ -186,17 +184,6 @@
          * @return {EventBusClass}
          */
         redirect: function (origin, endpoint, condition, processor) {
-            //support EventBus.redirect({
-            //  origin:'click',
-            //  endpoint:'onClick'
-            // })
-            if (arguments.length == 1 && typeof origin == "object") {
-                var option = origin;
-                origin = option["origin"];
-                endpoint = option["endpoint"];
-                condition = option["condition"];
-                processor = option["processor"];
-            }
             var bus = this;
             if (origin == undefined || endpoint == undefined || origin == endpoint)return bus;
 
@@ -248,25 +235,25 @@
                                             processor.apply(scope, args);
                                             emitArgs = (emitArgs instanceof Array) ? [""].concat(emitArgs) : [].concat(args);
                                             emitArgs[0] = type;
-                                            if(EventBusClass.DEFAULT.SHOW_LOG)
+                                            if (EventBusClass.DEFAULT.SHOW_LOG)
                                                 console.log("redirect=>redirect id:", event.id, " origin:", origin, " ==> endpoint:", type);
-                                            bus.emit.apply(bus, emitArgs);//dispatch endpoint event}
+                                            bus.emit.apply(bus, emitArgs);//dispatch endpoint event
                                         }
                                     }
                                 );
                                 stack.pop();
                             } else {
-                                if(EventBusClass.DEFAULT.SHOW_LOG)
+                                if (EventBusClass.DEFAULT.SHOW_LOG)
                                     console.log("redirect=>origin:", origin.toString(),
-                                    " ==>endpoint:", endpoint.toString(),
-                                    " redirect is looping! this event is lost.");
+                                        " ==>endpoint:", endpoint.toString(),
+                                        " redirect is looping! this event is lost.");
                             }
                         }
                     }
                 }
                 else {
                     return function (event) {
-                        if(EventBusClass.DEFAULT.SHOW_LOG)
+                        if (EventBusClass.DEFAULT.SHOW_LOG)
                             console.log("redirect=>redirect condition must set function or RegExp!")
                     }
                 }
@@ -329,7 +316,7 @@
             // console.log("emit arguments:",arguments);
 
             var args = slice(arguments);
-            type = processMultiTypes.call(this, type, this.emit, args);
+            type = processMultiTypes(this, this.emit, type, args);
             if (type == this)return this;
 
             var event = {
@@ -353,10 +340,10 @@
                 iterator(listeners, function (index, listener, listeners, iterator) {
                     if (listener && listener.callback) {
                         var listenerArgs = [].concat(args);
-                        if(EventBusClass.DEFAULT.SHOW_LOG)
-                            console.log("emit=>event listener call arguments:",listenerArgs);
+                        if (EventBusClass.DEFAULT.SHOW_LOG)
+                            console.log("emit=>event listener call arguments:", listenerArgs);
                         event.args = [].concat(listener.args);
-                        if(EventBusClass.DEFAULT.SHOW_LOG)
+                        if (EventBusClass.DEFAULT.SHOW_LOG)
                             console.log("emit=>fire event listener:", listener);
                         listener.callback.apply(listener.scope, listenerArgs);
                         if (isStop) iterator.stop();

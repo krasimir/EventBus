@@ -77,6 +77,20 @@ EventBus.trigger(type,target,args...)
 EventBus.emit(type,target,args...)
 ```
 
+### redirect
+```javascript
+//@origin is event type or event type array
+//@endpoint is target event type or event type array
+//@condition redirect condition check
+//@processor reset trigger endpoint event arguments
+EventBus.redirect(origin,endpoint);
+
+EventBus.redirect(origin,endpoint,condition);
+
+EventBus.redirect(origin,endpoint,condition,processor);
+
+```
+
 ### `getEvents`
 
 For debugging purpose, it prints out the added listeners.
@@ -180,4 +194,33 @@ var handler = function() {
 };
 EventBus.addEventListener('EXAMPLE_EVENT', handler);
 EventBus.removeEventListener('EXAMPLE_EVENT', handler);
+```
+## Example of usage EventBus.redirect
+```javascript
+var TestClass1 = function() {
+  this.className = "TestClass1";
+  this.doSomething = function(event, param1, param2) {
+    console.log(this.className + ".doSomething");
+    console.log("type=" + event.type);
+    console.log("params=" + param1 + param2);
+    console.log("coming from=" + event.target.className);
+  }
+};
+
+var TestClass2 = function() {
+  this.className = "TestClass2";
+  this.ready = function() {
+    EventBus.dispatch("custom_event", this, "javascript events", " are really useful");
+  }
+};
+
+var t1 = new TestClass1();
+var t2 = new TestClass2();
+
+EventBus.redirect("custom_event","ready");
+
+EventBus.on("ready",t1.doSomething,t1);
+
+t2.ready();
+
 ```
