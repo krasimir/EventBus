@@ -218,7 +218,7 @@
                                     if (!(eventType instanceof Array)) {
                                         eventType = [eventType];
                                     }
-                                    iterator(eventType, function (index, type) {//support endpoint array
+                                    iterator(eventType, function (index, type, array, iterator) {//support endpoint array
                                             if (type != event.type) {
                                                 var emitArgs = slice([].concat(args), 1);
                                                 event.setEmitArgs = function (args) {
@@ -241,6 +241,7 @@
                                                 if (EventBusClass.DEFAULT.SHOW_LOG)
                                                     console.log("redirect=>redirect id:", event.id, " origin:", origin, " ==> endpoint:", type);
                                                 bus.emit.apply(bus, emitArgs);//dispatch endpoint event
+                                                if (event.isStopped()) iterator.stop(true);
                                             }
                                         }
                                     );
@@ -353,6 +354,9 @@
                 var isStop = false;
                 event.stop = function () {
                     isStop = true;
+                };
+                event.isStopped = function () {
+                    return isStop;
                 };
                 event.getArg = function (index) {
                     if (event.args == undefined || !event.args instanceof Array || event.args.length - 1 < index)return undefined;
