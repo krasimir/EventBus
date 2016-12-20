@@ -371,6 +371,11 @@
                     },
                     getAllEvents: function () {
                         return stack.slice(0);
+                    },
+                    getEventIdsPath: function (separator) {
+                        return stack.map(function (event) {
+                            return event.id;
+                        }).join(separator || "==>");
                     }
                 };
 
@@ -387,6 +392,8 @@
                         if (EventBusClass.DEFAULT.SHOW_LOG)
                             console.log("emit=>fire event listener:", listener);
                         try {
+                            if(EventBusClass.DEFAULT.SHOW_LOG)
+                                console.log("event flow:",event.flow.getEventIdsPath());
                             listener.callback.apply(listener.scope, listenerArgs);
                         } catch (exception) {
                             isStop = true;

@@ -239,11 +239,18 @@ t2.ready();
 **flow** method like **redirect**,this method objective for quick and intuitive configuration event flow.
 ```javascript
 
+var printEventStack = function (event) {
+    var p = event;
+    console.log("==>current stage:",event.type," event id:",event.id);
+    console.log("event flow :",event.flow.getEventIdsPath());
+};
+
 EventBus.on("start",function(event) {
         console.log("The game is start...");
     })
     .on("chase",function(event) {
         console.log("overtaken");
+        printEventStack(event);//event flow : ready#1012==>start#1013==>chase#1015
         EventBus.emit("overtaken");
     })
     .flow(
@@ -251,6 +258,7 @@ EventBus.on("start",function(event) {
             {from:"start",to:"take-flight"},{from:"start",to:"chase"},
         {from:"overtaken",to:"end"} )
     .on("end",function(event) {
+        printEventStack(event);//event flow : ready#1012==>start#1013==>chase#1015==>overtaken#1016==>end#1017
         console.log("The game is end.");
     });
 
