@@ -90,6 +90,17 @@ EventBus.redirect(origin,endpoint,condition);
 EventBus.redirect(origin,endpoint,condition,processor);
 
 ```
+### flow
+```javascript
+EventBus.flow({from:'click',to:'onClick'});
+EventBus.flow({from:'click',to:'onClick'},{from:'onClick',to:'labelClick'});
+EventBus.flow({from:'click',to:'onClick'},{from:'onClick',to:'labelClick',processor:function(event) {
+  event.setEmitArgs(EventBus.slice(arguments,1));
+}});
+EventBus.flow({from:'click',to:'onClick'},{from:'onClick',to:'labelClick',where:function(event) {
+  return event.getLevel()>0;//only receive redirect
+}});
+```
 
 ### `getEvents`
 
@@ -223,4 +234,56 @@ EventBus.on("ready",t1.doSomething,t1);
 
 t2.ready();
 
+```
+## Example of usage EventBus.flow
+**flow** method like **redirect**,this method objective for quick and intuitive configuration event flow.
+```javascript
+
+EventBus.on("start",function(event) {
+        console.log("The game is start...");
+    })
+    .on("chase",function(event) {
+        console.log("overtaken");
+        EventBus.emit("overtaken");
+    })
+    .flow(
+        {from:"ready",to:"start"},
+            {from:"start",to:"take-flight"},{from:"start",to:"chase"},
+        {from:"overtaken",to:"end"} )
+    .on("end",function(event) {
+        console.log("The game is end.");
+    });
+
+EventBus.emit("ready");
+
+```
+
+## Example of Error event handling
+focus all error event handling.
+```javascript
+EventBus.on(EventBus.DEFAULT.ERROR_EVENT_TYPE,function(event,error,listener,triggerArguments) {
+  console.log(error);
+});
+
+EventBus.on("click",function(event) {
+  throw "We are not ready!";
+});
+
+EventBus.emit("click");
+```
+
+## Example of usage event object
+For debugging purpose, print event objects tree.
+```javascript
+EventBus.redirect("click","onClick");
+EventBus.on("onClick",function(event) {
+  var e = event;
+  while(e){
+      console.log(e.getLevel()," event id:",e.id," event object:",e);
+      e.stop(); // stop event dispatch.
+      e = e.flow.getClosestEvent();//get prior event.
+  }
+});
+
+EventBus.emit("click");
 ```
