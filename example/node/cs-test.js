@@ -49,10 +49,11 @@ Consumer.prototype = {
          });*/
         var p = event;
         while (p) {//print event flow
-            console.log("event level ",p.getLevel()," level object:",p);
+            console.log("event level ", p.getLevel(), " level object:", p);
             p = p.flow.getClosestEvent();
         }
-        console.log(this.name, "is ready to receive order goods. order id=", order.id, " order name:" + order.name);
+        // console.log(this.name, "is ready to receive order goods. order id=", order.id, " order name:" + order.name);
+        throw "Not enough space for storage of goods in order " + order.id + "!";
     },
 
     init: function (once) {
@@ -105,16 +106,15 @@ EventBus.redirect(
     function (event, order) { //processor
         console.log("redirect processor for ", event.id, "==>",
             "origin:", event.getOriginType(), " endpoint:", event.getEndpoint());
-
         if (order.consumer == "bona") event.setEmitArgs([order, "passed"]);
     }
 );
 
 EventBus.redirect(
-    "qc-report",function (event,order) {
-        return "trans/"+order.consumer;
-    },function (event,order,state) {
-        return state==="passed";
+    "qc-report", function (event, order) {
+        return "trans/" + order.consumer;
+    }, function (event, order, state) {
+        return state === "passed";
     }
 );
 
@@ -131,6 +131,12 @@ EventBus.on("qc-report", function (event, order, checkState) {
     this.orders.push(order);
     if (checkState == "passed") this.passed.push(order);
 }, qcReport);
+
+
+//exception handling
+EventBus.on(EventBus.DEFAULT.ERROR_EVENT_TYPE, function (event, exception, listener, listenerArgs) {
+    console.log("found exception:", exception, ", listener is ", listener, " ,args:", listenerArgs);
+});
 
 new Consumer("peter");
 new Consumer("kerry");
