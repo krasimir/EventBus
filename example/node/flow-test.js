@@ -2,7 +2,7 @@
  * Created by bona on 2016/12/20.
  */
 
-var EventBus = require('../../lib/eventbus.min');
+var ebus = require('../../lib/eventbus.min');
 
 var printEventStack = function (event) {
     var p = event;
@@ -10,13 +10,13 @@ var printEventStack = function (event) {
     console.log("event flow :",event.flow.getEventIdsPath());
 };
 
-EventBus.on("start",function(event) {
+ebus.on("start",function(event) {
     console.log("The game is start...");
 })
     .on("chase",function(event) {
         console.log("overtaken");
         printEventStack(event);
-        EventBus.emit("overtaken");
+        ebus.emit("overtaken");
     })
     .flow(
         {from:"ready",to:"start"},
@@ -27,4 +27,4 @@ EventBus.on("start",function(event) {
         printEventStack(event);
     });
 
-EventBus.emit("ready");
+ebus("ready");

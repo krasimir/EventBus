@@ -2,11 +2,11 @@
     if (typeof exports === 'object' && typeof module === 'object')
         module.exports = factory();
     else if (typeof define === 'function' && define.amd)
-        define("EventBus", [], factory);
+        define("ebus", [], factory);
     else if (typeof exports === 'object')
-        exports["EventBus"] = factory();
+        exports["ebus"] = factory();
     else
-        root["EventBus"] = factory();
+        root["ebus"] = factory();
 })(this, function () {
 
     function iterator(array, callback) {
@@ -100,24 +100,6 @@
             return this;
         },
         /**
-         * EventBus.once("click",callback);
-         * EventBus.once("click",callback,buttonScope);
-         * @param type
-         * @param callback
-         * @param scope
-         * @returns {EventBusClass}
-         */
-        once: function (type, callback, scope) {
-            var bus = this;
-            var proxyCallback = function (event) {
-                callback.apply(this, slice(arguments));
-                bus.off(type, proxyCallback, scope);
-            };
-            var args = slice(arguments);
-            args[1] = proxyCallback;
-            return bus.on.apply(bus, args);
-        },
-        /**
          *  EventBus.off("click");  //remove all click listeners
          *  EventBus.off("click",onClick);
          *  EventBus.off("click",onClick,buttonScope);
@@ -171,117 +153,6 @@
                 this.regexListeners = newArray;
             }
             return this;
-        },
-        /**
-         * redirect("click","onClick",function(event){return true;});
-         * redirect("click","onClick");
-         * redirect("click",function(event){return "onClick"},function(event){return true;});
-         * redirect(/\w*_click/,"onClick",/btn[0-9]+_click/);
-         * @param origin
-         * @param endpoint
-         * @param condition
-         * @param processor processor be called before event redirection
-         * @return {EventBusClass}
-         */
-        redirect: function (origin, endpoint, condition, processor) {
-            var bus = this;
-            if (origin == undefined || endpoint == undefined || origin == endpoint)return bus;
-
-            var scope = this.redirectScope = this.redirectScope || {};
-
-            processor = typeof processor == "function" ? processor : function (event) {
-                    event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
-                };
-            this.on(origin, (function (endpoint, condition, nextId) {//Unified exception handling by emit method.
-                if (condition == undefined)
-                    condition = function () { //default all origin event to endpoint event
-                        return true;
-                    };
-                if (condition instanceof RegExp) {//support reg exp as condition
-                    var exp = condition;
-                    condition = function (event) {
-                        return exp.test(event.type);
-                    }
-                }
-                if (typeof condition == "function") {
-                    var stack = [];
-                    return function (event) {//trigger redirect
-                        var args = slice(arguments);
-                        if (condition.apply(scope, args)) {//trigger condition check
-                            var eventType = typeof endpoint == "function" ? endpoint.apply(scope, args) : endpoint;//dynamic get endpoint
-                            if (stack.indexOf(nextId) < 0 && eventType != event.type && eventType != undefined)//check redirect looping
-                            {
-                                stack.push(nextId);
-                                try {
-                                    if (typeof eventType == "string") eventType =
-                                        eventType.trim().split(EventBusClass.DEFAULT.EVENT_TYPE_SPLIT_EXP);//support string split by SPACE,COMMA char
-                                    if (!(eventType instanceof Array)) {
-                                        eventType = [eventType];
-                                    }
-                                    iterator(eventType, function (index, type, array, iterator) {//support endpoint array
-                                            if (type != event.type) {
-                                                var emitArgs = slice([].concat(args), 1);
-                                                event.setEmitArgs = function (args) {
-                                                    emitArgs = args;
-                                                };
-                                                event.getEmitArgs = function () {
-                                                    return [].concat(emitArgs);
-                                                };
-                                                event.getOriginType = function () {
-                                                    return origin;
-                                                };
-                                                event.getEndpoint = function () {
-                                                    return type;
-                                                };
-                                                event.endpoints = event.endpoints || [];
-                                                event.endpoints.push(type);
-                                                processor.apply(scope, args);
-                                                emitArgs = (emitArgs instanceof Array) ? [""].concat(emitArgs) : [].concat(args);
-                                                emitArgs[0] = type;
-                                                if (EventBusClass.DEFAULT.SHOW_LOG)
-                                                    console.log("redirect=>redirect id:", event.id, " origin:", origin, " ==> endpoint:", type);
-                                                bus.emit.apply(bus, emitArgs);//dispatch endpoint event
-                                                if (event.isStopped()) iterator.stop(true);
-                                            }
-                                        }
-                                    );
-                                } finally {
-                                    stack.pop();
-                                }
-                            } else {
-                                throw "redirect origin:" + origin.toString() + " => endpoint:" + endpoint.toString() +
-                                "  is looping!";
-                            }
-                        }
-                    }
-                }
-                else {
-                    return function (event) {
-                        if (EventBusClass.DEFAULT.SHOW_LOG)
-                            console.log("redirect=>redirect condition must set function or RegExp!")
-                    }
-                }
-            })(endpoint, condition, nextId()), scope);
-            return bus;
-        },
-        /**
-         * build event flow
-         * EventBus.flow({from:'click',to:'onClick'})
-         * EventBus.flow({from:'ready',to:'start'},{from:'start',to:'end'})
-         * EventBus.flow({from:'click',to:'onClick',where:function(event){event.getLevel()>1}})
-         * @param node is event flow node map config,maybe node map array
-         * @return {EventBusClass}
-         */
-        flow: function (node) {
-            var nodeMap = slice(arguments);
-            if (node instanceof Array) nodeMap = node;
-            var bus = this;
-            iterator(nodeMap, function (index, node) {
-                if (node instanceof Object && typeof node == "object" && node['from'] != undefined && node['to'] != undefined) {
-                    bus.redirect(node['from'], node['to'], node['where'], node['processor']);
-                }
-            });
-            return bus;
         },
         /**
          * EventBus.has("click")
@@ -392,8 +263,8 @@
                         if (EventBusClass.DEFAULT.SHOW_LOG)
                             console.log("emit=>fire event listener:", listener);
                         try {
-                            if(EventBusClass.DEFAULT.SHOW_LOG)
-                                console.log("event flow:",event.flow.getEventIdsPath());
+                            if (EventBusClass.DEFAULT.SHOW_LOG)
+                                console.log("event flow:", event.flow.getEventIdsPath());
                             listener.callback.apply(listener.scope, listenerArgs);
                         } catch (exception) {
                             isStop = true;
@@ -440,7 +311,30 @@
     EventBusClass.prototype.trigger = EventBusClass.prototype.dispatch = EventBusClass.prototype.emit;
     EventBusClass.prototype.hasEventListener = EventBusClass.prototype.has;
 
-    var EventBus = new EventBusClass();
+    var _EventBus_ = new EventBusClass();
+
+    var EventBus = function (event) {
+        return _EventBus_.emit.apply(_EventBus_, slice(arguments));
+    };
+
+    var makeProxy = function (object, fn) {
+        return function () {
+            return fn.apply(object, slice(arguments));
+        }
+    };
+
+    iterator(EventBusClass.prototype, function (key, fn) {
+        if (fn && !EventBus["hasOwnProperty"](key) && typeof fn == "function")
+            EventBus[key] = makeProxy(_EventBus_, fn);
+    });
+
+    //support extend.
+    EventBus.fn = EventBusClass.prototype;
+
+    EventBus.plugin = function (f) {
+        f(EventBus);
+    };
+
     //common utils
     EventBus.slice = slice;
     EventBus.nextId = nextId;
@@ -451,5 +345,144 @@
         EVENT_TYPE_SPLIT_EXP: /,|\s/,
         ERROR_EVENT_TYPE: "EMIT_ERROR"
     };
+
+    EventBus.plugin(function (eBus) {
+        /**
+         * EventBus.once("click",callback);
+         * EventBus.once("click",callback,buttonScope);
+         * @param type
+         * @param callback
+         * @param scope
+         * @returns {EventBusClass}
+         */
+        eBus.fn.once = function (type, callback, scope) {
+            var bus = this;
+            var proxyCallback = function (event) {
+                callback.apply(this, slice(arguments));
+                bus.off(type, proxyCallback, scope);
+            };
+            var args = slice(arguments);
+            args[1] = proxyCallback;
+            return bus.on.apply(bus, args);
+        }
+    });
+
+    EventBus.plugin(function (eBus) {
+        /**
+         * build event flow
+         * EventBus.flow({from:'click',to:'onClick'})
+         * EventBus.flow({from:'ready',to:'start'},{from:'start',to:'end'})
+         * EventBus.flow({from:'click',to:'onClick',where:function(event){event.getLevel()>1}})
+         * @param node is event flow node map config,maybe node map array
+         * @return {EventBusClass}
+         */
+        eBus.fn.flow = function (node) {
+            var nodeMap = slice(arguments);
+            if (node instanceof Array) nodeMap = node;
+            var bus = this;
+            iterator(nodeMap, function (index, node) {
+                if (node instanceof Object && typeof node == "object" && node['from'] != undefined && node['to'] != undefined) {
+                    bus.redirect(node['from'], node['to'], node['where'], node['processor']);
+                }
+            });
+            return bus;
+        };
+    });
+
+    EventBus.plugin(function (eBus) {
+        /**
+         * redirect("click","onClick",function(event){return true;});
+         * redirect("click","onClick");
+         * redirect("click",function(event){return "onClick"},function(event){return true;});
+         * redirect(/\w*_click/,"onClick",/btn[0-9]+_click/);
+         * @param origin
+         * @param endpoint
+         * @param condition
+         * @param processor processor be called before event redirection
+         * @return {EventBusClass}
+         */
+        eBus.fn.redirect = function (origin, endpoint, condition, processor) {
+            var bus = this;
+            if (origin == undefined || endpoint == undefined || origin == endpoint)return bus;
+
+            var scope = this.redirectScope = this.redirectScope || {};
+
+            processor = typeof processor == "function" ? processor : function (event) {
+                    event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
+                };
+            this.on(origin, (function (endpoint, condition, nextId) {//Unified exception handling by emit method.
+                if (condition == undefined)
+                    condition = function () { //default all origin event to endpoint event
+                        return true;
+                    };
+                if (condition instanceof RegExp) {//support reg exp as condition
+                    var exp = condition;
+                    condition = function (event) {
+                        return exp.test(event.type);
+                    }
+                }
+                if (typeof condition == "function") {
+                    var stack = [];
+                    return function (event) {//trigger redirect
+                        var args = slice(arguments);
+                        if (condition.apply(scope, args)) {//trigger condition check
+                            var eventType = typeof endpoint == "function" ? endpoint.apply(scope, args) : endpoint;//dynamic get endpoint
+                            if (stack.indexOf(nextId) < 0 && eventType != event.type && eventType != undefined)//check redirect looping
+                            {
+                                stack.push(nextId);
+                                try {
+                                    if (typeof eventType == "string") eventType =
+                                        eventType.trim().split(EventBusClass.DEFAULT.EVENT_TYPE_SPLIT_EXP);//support string split by SPACE,COMMA char
+                                    if (!(eventType instanceof Array)) {
+                                        eventType = [eventType];
+                                    }
+                                    iterator(eventType, function (index, type, array, iterator) {//support endpoint array
+                                            if (type != event.type) {
+                                                var emitArgs = slice([].concat(args), 1);
+                                                event.setEmitArgs = function (args) {
+                                                    emitArgs = args;
+                                                };
+                                                event.getEmitArgs = function () {
+                                                    return [].concat(emitArgs);
+                                                };
+                                                event.getOriginType = function () {
+                                                    return origin;
+                                                };
+                                                event.getEndpoint = function () {
+                                                    return type;
+                                                };
+                                                event.endpoints = event.endpoints || [];
+                                                event.endpoints.push(type);
+                                                processor.apply(scope, args);
+                                                emitArgs = (emitArgs instanceof Array) ? [""].concat(emitArgs) : [].concat(args);
+                                                emitArgs[0] = type;
+                                                if (EventBusClass.DEFAULT.SHOW_LOG)
+                                                    console.log("redirect=>redirect id:", event.id, " origin:", origin, " ==> endpoint:", type);
+                                                bus.emit.apply(bus, emitArgs);//dispatch endpoint event
+                                                if (event.isStopped()) iterator.stop(true);
+                                            }
+                                        }
+                                    );
+                                } finally {
+                                    stack.pop();
+                                }
+                            } else {
+                                throw "redirect origin:" + origin.toString() + " => endpoint:" + endpoint.toString() +
+                                "  is looping!";
+                            }
+                        }
+                    }
+                }
+                else {
+                    return function (event) {
+                        if (EventBusClass.DEFAULT.SHOW_LOG)
+                            console.log("redirect=>redirect condition must set function or RegExp!")
+                    }
+                }
+            })(endpoint, condition, nextId()), scope);
+            return bus;
+        }
+    });
+
     return EventBus;
 });
