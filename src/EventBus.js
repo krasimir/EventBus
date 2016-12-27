@@ -317,6 +317,21 @@
         return _EventBus_.emit.apply(_EventBus_, slice(arguments));
     };
 
+    var isFunction = function (fn) {
+            return fn && typeof fn === "function";
+        },
+
+        isArray = function (array) {
+            return array && array.constructor.name == "Array";
+        },
+
+        hit = function (object, fn) {
+            return function () {
+                return fn.apply(object, slice(arguments));
+            }
+        };
+
+
     //support extend.
     EventBus.fn = EventBusClass.prototype;
 
@@ -337,6 +352,10 @@
      */
     EventBus.plugin = function (f) {
         f(EventBus);
+        iterator(EventBusClass.prototype, function (key, fn) {
+            if (fn && !EventBus["hasOwnProperty"](key) && isFunction(fn))
+                EventBus[key] = hit(_EventBus_, fn);
+        });
     };
 
     EventBus.plugin(function (eBus) {
@@ -431,8 +450,9 @@
             var scope = this.redirectScope = this.redirectScope || {};
 
             processor = typeof processor == "function" ? processor : function (event) {
-                    event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
-                };
+                event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
+            };
+
             this.on(origin, (function (endpoint, condition, nextId) {//Unified exception handling by emit method.
                 if (condition == undefined)
                     condition = function () { //default all origin event to endpoint event
@@ -511,31 +531,93 @@
     });
 
     EventBus.plugin(function (eBus) {
-        var aspect_cache={};
+        var aspect_cache = {}, old_fn = {};
+
         function aspect(name, orientation, fn) {
-            var chain = aspect_cache[name] = eBus.isArray(aspect_cache[name])?aspect_cache[name]:[];
+            var chain = aspect_cache[name] = eBus.isArray(aspect_cache[name]) ? aspect_cache[name] : [];
             var old_aspect = eBus.fn[name];
-            var isFunction = eBus.isFunction(old_aspect);
-            // if (!isFunction)return;
-            eBus.fn[name] = function () {
-                var args = slice(arguments);
-                var bus = this;
-                var ret;
-                if (orientation === "before" || orientation === "around") {
-                    ret = fn.apply(bus, [{name: name, orientation: orientation, args: args}]);
-                }
-                if (isFunction) ret = old_aspect.apply(bus, args);
-                if (orientation === "after" || orientation === "around") {
-                    ret = fn.apply(bus, [{name: name, orientation: orientation, args: args}, ret]);
-                }
-                return ret;
+            var isAspect = eBus.isFunction(old_aspect) && old_aspect.aspect;
+            if (!isAspect) {
+                old_fn[name] = eBus.fn[name];
+            }
+            var handlerId = [orientation, name, eBus.nextId()].join("-");
+            chain.push(handlerId);
+
+            var handler = {
+                handlerId: handlerId,
+                fn: fn,
+                name: name,
+                orientation: orientation
             };
 
-            eBus.fn[name].aspect = {
-                orientation: orientation,
-                next: old_aspect
-            };
-            return eBus;
+            function removeHandler() {
+                var index = chain.indexOf(handlerId);
+                chain.splice(index, 1);
+                delete aspect_cache[handlerId];
+                if (chain.length == 0) {
+                    eBus.fn[this.name] = old_fn[this.name];
+                }
+            }
+
+            function indexHandler(index) {
+                var old_index = chain.indexOf(this.handlerId);
+                if (old_index == index)return;
+                index = chain.length - index;
+                index = index > chain.length ? chain.length : (index < 0 ? 0 : index);
+                chain.splice(index, 0, this.handlerId);
+                old_index = index > old_index ? old_index : old_index + 1;
+                chain.splice(old_index, 1);
+            }
+
+            handler.remove = eBus.hit(handler, removeHandler);
+            handler.index = eBus.hit(handler, indexHandler);
+
+            aspect_cache[handlerId] = handler;
+
+            if (!isAspect) {
+                eBus.fn[name] = function () {
+                    var args = slice(arguments);
+                    var bus = this;
+                    var ret;
+                    var handlerIds = [].concat(chain);
+                    var handlerId;
+                    while (handlerId = handlerIds.pop()) {
+                        var fn = aspect_cache[handlerId].fn;
+                        var orientation = aspect_cache[handlerId].orientation;
+                        if (orientation === "before" || orientation === "around") {
+                            ret = fn.apply(bus, [{
+                                name: name,
+                                orientation: orientation,
+                                args: args,
+                                handlerId: handlerId,
+                                remove: aspect_cache[handlerId].remove,
+                                index: aspect_cache[handlerId].index
+                            }]);
+                        }
+
+                        if (handlerIds.length == 0 && eBus.isFunction(old_fn[name]))
+                            ret = old_fn[name].apply(bus, args);
+
+                        if (orientation === "after" || orientation === "around") {
+                            ret = fn.apply(bus, [{
+                                name: name,
+                                orientation: orientation,
+                                args: args,
+                                handlerId: handlerId,
+                                remove: aspect_cache[handlerId].remove,
+                                index: aspect_cache[handlerId].index
+                            }, ret]);
+                        }
+                        return ret;
+                    }
+                };
+
+                eBus.fn[name].aspect = {
+                    orientation: orientation,
+                    next: handler
+                };
+            }
+            return handler;
         }
 
         eBus.aspect = aspect;
@@ -582,31 +664,14 @@
         };
     });
 
-    var hit = function (object, fn) {
-        return function () {
-            return fn.apply(object, slice(arguments));
-        }
-    };
-
-    iterator(EventBusClass.prototype, function (key, fn) {
-        if (fn && !EventBus["hasOwnProperty"](key) && typeof fn == "function")
-            EventBus[key] = hit(_EventBus_, fn);
-    });
-
     EventBus.plugin(function (eBus) {
         //common utils
         eBus.slice = slice;
         eBus.nextId = nextId;
         eBus.iterator = iterator;
         eBus.hit = hit;
-        eBus.isFunction = function (fn) {
-            return fn&&typeof fn ==="function";
-        };
-
-        eBus.isArray = function (array) {
-            return array && array.constructor.name=="Array";
-        }
-
+        eBus.isFunction = isFunction;
+        eBus.isArray = isArray;
     });
 
     return EventBus;

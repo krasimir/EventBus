@@ -14,12 +14,18 @@ ebus.before("emit", function (handler) {
     console.log("before emit=>", handler);
     // console.log("early event: ", this.getEarlyEvent() ? this.getEarlyEvent().id : undefined);
     console.log("closest event path: ", this.getCurrentEvent() ? this.getCurrentEvent().flow.getEventIdsPath() : undefined);
-})/*.after("emit", function (handler, result) {
-    console.log("after emit=>", handler);
+    handler.remove();
+});
+
+ebus.after("beforeEmit", function (handler, result) {
+    console.log("after beforeEmit=>", handler);
     console.log("current event path: ", this.getCurrentEvent() ? this.getCurrentEvent().flow.getEventIdsPath() : undefined);
-})*/.before("beforeEmit",function (handler) {
+}).remove();
+
+ebus.before("beforeEmit", function (handler) {
     // console.log(handler);
-    console.log("current event path: ", this.getCurrentEvent() ? this.getCurrentEvent().flow.getEventIdsPath() : undefined);
+    console.log("beforeEmit,current event path: ", this.getCurrentEvent() ? this.getCurrentEvent().flow.getEventIdsPath() : undefined);
+    handler.remove();
 });
 
 ebus.on("start", function (event) {
