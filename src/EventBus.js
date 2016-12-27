@@ -2,11 +2,11 @@
     if (typeof exports === 'object' && typeof module === 'object')
         module.exports = factory();
     else if (typeof define === 'function' && define.amd)
-        define("ebus", [], factory);
+        define("EventBus", [], factory);
     else if (typeof exports === 'object')
-        exports["ebus"] = factory();
+        exports["EventBus"] = factory();
     else
-        root["ebus"] = factory();
+        root["EventBus"] = factory();
 })(this, function () {
 
     function iterator(array, callback) {
@@ -265,10 +265,14 @@
                         try {
                             if (EventBusClass.DEFAULT.SHOW_LOG)
                                 console.log("event flow:", event.flow.getEventIdsPath());
+                            var emitAspect = bus["beforeEmit"];
+                            if (emitAspect && typeof emitAspect == "function") emitAspect.apply(bus, [listener].concat(listenerArgs));
                             listener.callback.apply(listener.scope, listenerArgs);
+                            emitAspect = bus["afterEmit"];
+                            if (emitAspect && typeof emitAspect == "function") emitAspect.apply(bus, [listener].concat(listenerArgs));
                         } catch (exception) {
                             isStop = true;
-                            bus.emit(bus.DEFAULT.ERROR_EVENT_TYPE, exception, listener, listenerArgs);
+                            bus.emit(EventBusClass.DEFAULT.ERROR_EVENT_TYPE, exception, listener, listenerArgs);
                         }
                         if (isStop) iterator.stop();
                     }
@@ -305,11 +309,7 @@
             return str;
         }
     };
-    //alis
-    EventBusClass.prototype.bind = EventBusClass.prototype.addEventListener = EventBusClass.prototype.on;
-    EventBusClass.prototype.unbind = EventBusClass.prototype.removeEventListener = EventBusClass.prototype.off;
-    EventBusClass.prototype.trigger = EventBusClass.prototype.dispatch = EventBusClass.prototype.emit;
-    EventBusClass.prototype.hasEventListener = EventBusClass.prototype.has;
+
 
     var _EventBus_ = new EventBusClass();
 
@@ -317,34 +317,76 @@
         return _EventBus_.emit.apply(_EventBus_, slice(arguments));
     };
 
-    var makeProxy = function (object, fn) {
-        return function () {
-            return fn.apply(object, slice(arguments));
-        }
-    };
+    var isFunction = function (fn) {
+            return fn && typeof fn === "function";
+        },
 
-    iterator(EventBusClass.prototype, function (key, fn) {
-        if (fn && !EventBus["hasOwnProperty"](key) && typeof fn == "function")
-            EventBus[key] = makeProxy(_EventBus_, fn);
-    });
+        isArray = function (array) {
+            return array && array.constructor.name == "Array";
+        },
+
+        hit = function (object, fn) {
+            return function () {
+                return fn.apply(object, slice(arguments));
+            }
+        };
+
 
     //support extend.
     EventBus.fn = EventBusClass.prototype;
 
+    /**
+     * define EventBus plugin extend
+     * examples:
+     *  EventBus.plugin(function(eBus){
+     *
+     *      eBus.fn.newExtend = function(){
+     *
+     *      };
+     *
+     *      eBus.newStaticMethod = function(){
+     *
+     *      }
+     *  });
+     * @param f
+     */
     EventBus.plugin = function (f) {
         f(EventBus);
+        iterator(EventBusClass.prototype, function (key, fn) {
+            if (fn && !EventBus["hasOwnProperty"](key) && isFunction(fn))
+                EventBus[key] = hit(_EventBus_, fn);
+        });
     };
 
-    //common utils
-    EventBus.slice = slice;
-    EventBus.nextId = nextId;
-    EventBus.iterator = iterator;
+    EventBus.plugin(function (eBus) {
+        //alis
+        eBus.fn.bind = eBus.fn.addEventListener = eBus.fn.on;
+        eBus.fn.unbind = eBus.fn.removeEventListener = eBus.fn.off;
+        eBus.fn.trigger = eBus.fn.dispatch = eBus.fn.emit;
+        eBus.fn.hasEventListener = eBus.fn.has;
+    });
+
     //default config
     EventBus.DEFAULT = EventBusClass.DEFAULT = {
         SHOW_LOG: false,
         EVENT_TYPE_SPLIT_EXP: /,|\s/,
         ERROR_EVENT_TYPE: "EMIT_ERROR"
     };
+
+    EventBus.plugin(function (eBus) {
+
+        eBus.fn.getCurrentEvent = function () {
+            return [].concat(this.eventFlow).pop();
+        };
+
+        eBus.fn.getEarlyEvent = function () {
+            return [].concat(this.eventFlow).shift();
+        };
+
+        eBus.fn.getClosestEvent = function () {
+            return this.getCurrentEvent() ? this.getCurrentEvent().flow.getClosestEvent() : undefined;
+        }
+    });
 
     EventBus.plugin(function (eBus) {
         /**
@@ -408,8 +450,9 @@
             var scope = this.redirectScope = this.redirectScope || {};
 
             processor = typeof processor == "function" ? processor : function (event) {
-                    event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
-                };
+                event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
+            };
+
             this.on(origin, (function (endpoint, condition, nextId) {//Unified exception handling by emit method.
                 if (condition == undefined)
                     condition = function () { //default all origin event to endpoint event
@@ -451,6 +494,9 @@
                                                 event.getEndpoint = function () {
                                                     return type;
                                                 };
+                                                event.isRedirect = function () {
+                                                    return true;
+                                                };
                                                 event.endpoints = event.endpoints || [];
                                                 event.endpoints.push(type);
                                                 processor.apply(scope, args);
@@ -482,6 +528,150 @@
             })(endpoint, condition, nextId()), scope);
             return bus;
         }
+    });
+
+    EventBus.plugin(function (eBus) {
+        var aspect_cache = {}, old_fn = {};
+
+        function aspect(name, orientation, fn) {
+            var chain = aspect_cache[name] = eBus.isArray(aspect_cache[name]) ? aspect_cache[name] : [];
+            var old_aspect = eBus.fn[name];
+            var isAspect = eBus.isFunction(old_aspect) && old_aspect.aspect;
+            if (!isAspect) {
+                old_fn[name] = eBus.fn[name];
+            }
+            var handlerId = [orientation, name, eBus.nextId()].join("-");
+            chain.push(handlerId);
+
+            var handler = {
+                handlerId: handlerId,
+                fn: fn,
+                name: name,
+                orientation: orientation
+            };
+
+            function removeHandler() {
+                var index = chain.indexOf(handlerId);
+                chain.splice(index, 1);
+                delete aspect_cache[handlerId];
+                if (chain.length == 0) {
+                    eBus.fn[this.name] = old_fn[this.name];
+                }
+            }
+
+            function indexHandler(index) {
+                var old_index = chain.indexOf(this.handlerId);
+                if (old_index == index)return;
+                index = chain.length - index;
+                index = index > chain.length ? chain.length : (index < 0 ? 0 : index);
+                chain.splice(index, 0, this.handlerId);
+                old_index = index > old_index ? old_index : old_index + 1;
+                chain.splice(old_index, 1);
+            }
+
+            handler.remove = eBus.hit(handler, removeHandler);
+            handler.index = eBus.hit(handler, indexHandler);
+
+            aspect_cache[handlerId] = handler;
+
+            if (!isAspect) {
+                eBus.fn[name] = function () {
+                    var args = slice(arguments);
+                    var bus = this;
+                    var ret;
+                    var handlerIds = [].concat(chain);
+                    var handlerId;
+                    while (handlerId = handlerIds.pop()) {
+                        var fn = aspect_cache[handlerId].fn;
+                        var orientation = aspect_cache[handlerId].orientation;
+                        if (orientation === "before" || orientation === "around") {
+                            ret = fn.apply(bus, [{
+                                name: name,
+                                orientation: orientation,
+                                args: args,
+                                handlerId: handlerId,
+                                remove: aspect_cache[handlerId].remove,
+                                index: aspect_cache[handlerId].index
+                            }]);
+                        }
+
+                        if (handlerIds.length == 0 && eBus.isFunction(old_fn[name]))
+                            ret = old_fn[name].apply(bus, args);
+
+                        if (orientation === "after" || orientation === "around") {
+                            ret = fn.apply(bus, [{
+                                name: name,
+                                orientation: orientation,
+                                args: args,
+                                handlerId: handlerId,
+                                remove: aspect_cache[handlerId].remove,
+                                index: aspect_cache[handlerId].index
+                            }, ret]);
+                        }
+                        return ret;
+                    }
+                };
+
+                eBus.fn[name].aspect = {
+                    orientation: orientation,
+                    next: handler
+                };
+            }
+            return handler;
+        }
+
+        eBus.aspect = aspect;
+
+        /**
+         * the handler called before named method invocation
+         * @param name
+         * @param handler
+         * @return {EventBus}
+         */
+        eBus.before = function (name, handler) {
+            return eBus.aspect(name, "before", handler);
+        };
+
+        /**
+         * the handler called after named method invocation
+         * @param name
+         * @param handler
+         * @return {EventBus}
+         */
+
+        eBus.after = function (name, handler) {
+            return eBus.aspect(name, "after", handler);
+        };
+
+        /**
+         * the handler called before and after named method invocation
+         * @param name
+         * @param handler
+         * @return {EventBus}
+         */
+        eBus.around = function (name, handler) {
+            return eBus.aspect(name, "around", handler);
+        };
+    });
+
+    EventBus.plugin(function (eBus) {
+        eBus.fn.beforeEmit = function () {
+
+        };
+
+        eBus.fn.afterEmit = function () {
+
+        };
+    });
+
+    EventBus.plugin(function (eBus) {
+        //common utils
+        eBus.slice = slice;
+        eBus.nextId = nextId;
+        eBus.iterator = iterator;
+        eBus.hit = hit;
+        eBus.isFunction = isFunction;
+        eBus.isArray = isArray;
     });
 
     return EventBus;
