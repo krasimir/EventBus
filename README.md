@@ -4,7 +4,7 @@
 
 ### In a browser
 
-Download [eventbus.min.js](https://raw.githubusercontent.com/krasimir/EventBus/master/lib/eventbus.min.js) and add it to your page.
+Download [eventbus.min.js](https://raw.githubusercontent.com/bonashen/EventBus/master/lib/eventbus.min.js) and add it to your page.
 
 ### In Node
 
@@ -102,13 +102,6 @@ EventBus.flow({from:'click',to:'onClick'},{from:'onClick',to:'labelClick',where:
 }});
 ```
 
-### `getEvents`
-
-For debugging purpose, it prints out the added listeners.
-
-```js
-EventBus.getEvents()
-```
 
 ## Usage
 
@@ -137,6 +130,8 @@ EventBus.dispatch("my_function_event");
 EventBus.trigger("my_function_event");
 //or
 EventBus.emit("my_function_event");
+//or
+EventBus("my_function_event");
 ```
 
 ## Keeping the scope
@@ -294,4 +289,38 @@ EventBus.on("onClick",function(event) {
 });
 
 EventBus.emit("click");
+```
+
+## Example of usage EventBus.plugin
+EventBus support define plugin.
+```javascript
+EventBus.plugin(function(eBus) {
+  eBus.fn.newFeature = function() {
+      return this;
+  };
+  
+  //define static method
+  eBus.newStaticMethod = function() {
+    
+  };
+  
+});
+```
+
+## Example of usage EventBus aspect
+EventBus support before after and around aspect. The aspect code from dojo/aspect module.
+```javascript
+EventBus.plugin(function(eBus){
+    //advice EventBus emit 
+    eBus.before("emit",function(event){
+        if(event=="ready")
+            return eBus.slice(arguments).concat([{name:"new object"}]);//append new object to emit
+    });
+});
+//aspect utils example
+var scope = {name:"bona",sayHello:function(message){console.log(this.name,message)}};
+var handler = EventBus.aspect.before(scope,"sayHello",function(message) {
+  return [[",",message,"!"].join("")];
+});
+scope.sayHello("hello world");
 ```
