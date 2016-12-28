@@ -5,10 +5,10 @@
 
 		<script type="text/javascript" language="javascript" src="../../lib/eventbus.min.js"></script>
 		<script type="text/javascript" language="javascript">
-		
+
 			window.onload = function() {
 
-				// ******************************************************************************************				
+				// ******************************************************************************************
 				function myFunction(event) {
 					console.log("myFunction type=" + event.type);
 				}
@@ -54,8 +54,8 @@
 
 				var t1 = new TestClass1();
 				var t2 = new TestClass2();
-
-				EventBus.addEventListener("custom_event", t1.doSomething, t1);
+				EventBus.redirect("custom_event","ready");
+				EventBus.on("ready", t1.doSomething, t1);
 				t2.ready();
 
 				// ******************************************************************************************
@@ -63,19 +63,19 @@
 				var winterHandler = function() {
 					console.log("arguments", arguments);
 				}
-				EventBus.addEventListener("let-it-snow", winterHandler, null, "and happy", "new year");
+				EventBus.on("let-it-snow", winterHandler, null, "and happy", "new year");
+				EventBus.emit("let-it-snow", null, "merry", "christmas");
+				EventBus.trigger("let-it-snow", null, "merry", "christmas");
 				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
-				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
-				EventBus.dispatch("let-it-snow", null, "merry", "christmas");
-				
+
 			}
-		
+
 		</script>
-		
+
 	</head>
 	<body>
 		<div id="console.log">
-			
+
 		</div>
 	</body>
 </html>
