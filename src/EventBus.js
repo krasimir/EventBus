@@ -8,6 +8,21 @@
     else
         root["EventBus"] = factory();
 })(this, function () {
+    "use strict";
+    var undefined;
+    var isFunction = function (fn) {
+            return fn && typeof fn === "function";
+        },
+
+        isArray = function (array) {
+            return array && array.constructor.name === "Array";
+        },
+
+        hit = function (object, fn) {
+            return function () {
+                return fn.apply(object, slice(arguments));
+            }
+        };
 
     function iterator(array, callback) {
         array = array || [];
@@ -32,7 +47,7 @@
     }
 
     function processMultiTypes(busObject, busMethod, type, args) {
-        if (typeof type == "string" || type instanceof Array) {
+        if (typeof type == "string" || isArray(type)) {
             var types = type;
             if (typeof type == "string") types = type.trim().split(EventBusClass.DEFAULT.EVENT_TYPE_SPLIT_EXP);
             if (types.length > 1) {
@@ -230,7 +245,7 @@
                     return isStop;
                 };
                 event.getArg = function (index) {
-                    if (event.args == undefined || !event.args instanceof Array || event.args.length - 1 < index)return undefined;
+                    if (!isArray(event.args) || event.args.length - 1 < index)return undefined;
                     return event.args[index];
                 };
                 event.flow = {
@@ -265,11 +280,11 @@
                         try {
                             if (EventBusClass.DEFAULT.SHOW_LOG)
                                 console.log("event flow:", event.flow.getEventIdsPath());
-                            var emitAspect = bus["beforeEmit"];
-                            if (emitAspect && typeof emitAspect == "function") emitAspect.apply(bus, [listener].concat(listenerArgs));
+                            var emitAspect = bus["beforeTriggerListener"];
+                            if (isFunction(emitAspect)) emitAspect.apply(bus, [listener].concat(listenerArgs));
                             listener.callback.apply(listener.scope, listenerArgs);
-                            emitAspect = bus["afterEmit"];
-                            if (emitAspect && typeof emitAspect == "function") emitAspect.apply(bus, [listener].concat(listenerArgs));
+                            emitAspect = bus["afterTriggerListener"];
+                            if (isFunction(emitAspect)) emitAspect.apply(bus, [listener].concat(listenerArgs));
                         } catch (exception) {
                             isStop = true;
                             bus.emit(EventBusClass.DEFAULT.ERROR_EVENT_TYPE, exception, listener, listenerArgs);
@@ -290,23 +305,6 @@
             dispatchEvent(listeners);
             eventFlow.pop();
             return this;
-        },
-        getAllEvents: function () {
-            var str = "";
-            for (var type in this.listeners) {
-                var numOfCallbacks = this.listeners[type].length;
-                for (var i = 0; i < numOfCallbacks; i++) {
-                    var listener = this.listeners[type][i];
-                    str += listener.scope && listener.scope.className ? listener.scope.className : "anonymous";
-                    str += " listen for '" + type + "'\n";
-                }
-            }
-
-            iterator([].concat(this.regexListeners), function (index, listener) {
-                str += listener.scope && listener.scope.className ? listener.scope.className : "anonymous";
-                str += " listen for '" + listener.eventType + "'\n";
-            });
-            return str;
         }
     };
 
@@ -317,23 +315,17 @@
         return _EventBus_.emit.apply(_EventBus_, slice(arguments));
     };
 
-    var isFunction = function (fn) {
-            return fn && typeof fn === "function";
-        },
-
-        isArray = function (array) {
-            return array && array.constructor.name == "Array";
-        },
-
-        hit = function (object, fn) {
-            return function () {
-                return fn.apply(object, slice(arguments));
-            }
-        };
-
-
     //support extend.
     EventBus.fn = EventBusClass.prototype;
+
+    //default config
+    EventBus.DEFAULT = EventBusClass.DEFAULT = {
+        SHOW_LOG: false,
+        EVENT_TYPE_SPLIT_EXP: /,|\s/,
+        ERROR_EVENT_TYPE: "EMIT_ERROR",
+        EXCLUDE_NAMES: ["aspect", "before", "after", "around", "isFunction", "isArray", "hit", "slice", "iterator"]
+    };
+
 
     /**
      * define EventBus plugin extend
@@ -350,10 +342,13 @@
      *  });
      * @param f
      */
+
     EventBus.plugin = function (f) {
         f(EventBus);
         iterator(EventBusClass.prototype, function (key, fn) {
-            if (fn && !EventBus["hasOwnProperty"](key) && isFunction(fn))
+            if (fn && /*!EventBus["hasOwnProperty"](key) &&*/(!{}["hasOwnProperty"](key)) &&
+                isFunction(fn) &&
+                EventBusClass.DEFAULT.EXCLUDE_NAMES.indexOf(key) < 0)
                 EventBus[key] = hit(_EventBus_, fn);
         });
     };
@@ -365,13 +360,6 @@
         eBus.fn.trigger = eBus.fn.dispatch = eBus.fn.emit;
         eBus.fn.hasEventListener = eBus.fn.has;
     });
-
-    //default config
-    EventBus.DEFAULT = EventBusClass.DEFAULT = {
-        SHOW_LOG: false,
-        EVENT_TYPE_SPLIT_EXP: /,|\s/,
-        ERROR_EVENT_TYPE: "EMIT_ERROR"
-    };
 
     EventBus.plugin(function (eBus) {
 
@@ -420,7 +408,7 @@
          */
         eBus.fn.flow = function (node) {
             var nodeMap = slice(arguments);
-            if (node instanceof Array) nodeMap = node;
+            if (isArray(node)) nodeMap = node;
             var bus = this;
             iterator(nodeMap, function (index, node) {
                 if (node instanceof Object && typeof node == "object" && node['from'] != undefined && node['to'] != undefined) {
@@ -449,9 +437,9 @@
 
             var scope = this.redirectScope = this.redirectScope || {};
 
-            processor = typeof processor == "function" ? processor : function (event) {
-                event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
-            };
+            processor = isFunction(processor) ? processor : function (event) {
+                    event.setEmitArgs(EventBus.slice(arguments, 1));//example:  set emit endpoint event arguments
+                };
 
             this.on(origin, (function (endpoint, condition, nextId) {//Unified exception handling by emit method.
                 if (condition == undefined)
@@ -464,19 +452,19 @@
                         return exp.test(event.type);
                     }
                 }
-                if (typeof condition == "function") {
+                if (isFunction(condition)) {
                     var stack = [];
                     return function (event) {//trigger redirect
                         var args = slice(arguments);
                         if (condition.apply(scope, args)) {//trigger condition check
-                            var eventType = typeof endpoint == "function" ? endpoint.apply(scope, args) : endpoint;//dynamic get endpoint
+                            var eventType = isFunction(endpoint) ? endpoint.apply(scope, args) : endpoint;//dynamic get endpoint
                             if (stack.indexOf(nextId) < 0 && eventType != event.type && eventType != undefined)//check redirect looping
                             {
                                 stack.push(nextId);
                                 try {
                                     if (typeof eventType == "string") eventType =
                                         eventType.trim().split(EventBusClass.DEFAULT.EVENT_TYPE_SPLIT_EXP);//support string split by SPACE,COMMA char
-                                    if (!(eventType instanceof Array)) {
+                                    if (!(isArray(eventType))) {
                                         eventType = [eventType];
                                     }
                                     iterator(eventType, function (index, type, array, iterator) {//support endpoint array
@@ -500,7 +488,7 @@
                                                 event.endpoints = event.endpoints || [];
                                                 event.endpoints.push(type);
                                                 processor.apply(scope, args);
-                                                emitArgs = (emitArgs instanceof Array) ? [""].concat(emitArgs) : [].concat(args);
+                                                emitArgs = (isArray(emitArgs)) ? [""].concat(emitArgs) : [].concat(args);
                                                 emitArgs[0] = type;
                                                 if (EventBusClass.DEFAULT.SHOW_LOG)
                                                     console.log("redirect=>redirect id:", event.id, " origin:", origin, " ==> endpoint:", type);
@@ -531,136 +519,290 @@
     });
 
     EventBus.plugin(function (eBus) {
-        var aspect_cache = {}, old_fn = {};
-
-        function aspect(name, orientation, fn) {
-            var chain = aspect_cache[name] = eBus.isArray(aspect_cache[name]) ? aspect_cache[name] : [];
-            var old_aspect = eBus.fn[name];
-            var isAspect = eBus.isFunction(old_aspect) && old_aspect.aspect;
-            if (!isAspect) {
-                old_fn[name] = eBus.fn[name];
-            }
-            var handlerId = [orientation, name, eBus.nextId()].join("-");
-            chain.push(handlerId);
-
-            var handler = {
-                handlerId: handlerId,
-                fn: fn,
-                name: name,
-                orientation: orientation
-            };
-
-            function removeHandler() {
-                var index = chain.indexOf(handlerId);
-                chain.splice(index, 1);
-                delete aspect_cache[handlerId];
-                if (chain.length == 0) {
-                    eBus.fn[this.name] = old_fn[this.name];
-                }
-            }
-
-            function indexHandler(index) {
-                var old_index = chain.indexOf(this.handlerId);
-                if (old_index == index)return;
-                index = chain.length - index;
-                index = index > chain.length ? chain.length : (index < 0 ? 0 : index);
-                chain.splice(index, 0, this.handlerId);
-                old_index = index > old_index ? old_index : old_index + 1;
-                chain.splice(old_index, 1);
-            }
-
-            handler.remove = eBus.hit(handler, removeHandler);
-            handler.index = eBus.hit(handler, indexHandler);
-
-            aspect_cache[handlerId] = handler;
-
-            if (!isAspect) {
-                eBus.fn[name] = function () {
-                    var args = slice(arguments);
-                    var bus = this;
-                    var ret;
-                    var handlerIds = [].concat(chain);
-                    var handlerId;
-                    while (handlerId = handlerIds.pop()) {
-                        var fn = aspect_cache[handlerId].fn;
-                        var orientation = aspect_cache[handlerId].orientation;
-                        if (orientation === "before" || orientation === "around") {
-                            ret = fn.apply(bus, [{
-                                name: name,
-                                orientation: orientation,
-                                args: args,
-                                handlerId: handlerId,
-                                remove: aspect_cache[handlerId].remove,
-                                index: aspect_cache[handlerId].index
-                            }]);
+        //remember: aspect code from dojo/aspect module
+        function advise(dispatcher, type, advice, receiveArguments) {
+            var previous = dispatcher[type];
+            var around = type == "around";
+            var signal;
+            if (around) {
+                var advised = advice(function () {
+                    return previous.advice(this, arguments);
+                });
+                signal = {
+                    remove: function () {
+                        if (advised) {
+                            advised = dispatcher = advice = null;
                         }
-
-                        if (handlerIds.length == 0 && eBus.isFunction(old_fn[name]))
-                            ret = old_fn[name].apply(bus, args);
-
-                        if (orientation === "after" || orientation === "around") {
-                            ret = fn.apply(bus, [{
-                                name: name,
-                                orientation: orientation,
-                                args: args,
-                                handlerId: handlerId,
-                                remove: aspect_cache[handlerId].remove,
-                                index: aspect_cache[handlerId].index
-                            }, ret]);
-                        }
-                        return ret;
+                    },
+                    advice: function (target, args) {
+                        return advised ?
+                            advised.apply(target, args) :  // called the advised function
+                            previous.advice(target, args); // cancelled, skip to next one
                     }
                 };
+            } else {
+                // create the remove handler
+                signal = {
+                    remove: function () {
+                        if (signal.advice) {
+                            var previous = signal.previous;
+                            var next = signal.next;
+                            if (!next && !previous) {
+                                delete dispatcher[type];
+                            } else {
+                                if (previous) {
+                                    previous.next = next;
+                                } else {
+                                    dispatcher[type] = next;
+                                }
+                                if (next) {
+                                    next.previous = previous;
+                                }
+                            }
 
-                eBus.fn[name].aspect = {
-                    orientation: orientation,
-                    next: handler
+                            // remove the advice to signal that this signal has been removed
+                            dispatcher = advice = signal.advice = null;
+                        }
+                    },
+                    id: dispatcher.nextId++,
+                    advice: advice,
+                    receiveArguments: receiveArguments
                 };
             }
-            return handler;
+            if (previous && !around) {
+                if (type == "after") {
+                    // add the listener to the end of the list
+                    // note that we had to change this loop a little bit to workaround a bizarre IE10 JIT bug
+                    while (previous.next && (previous = previous.next)) {
+                    }
+                    previous.next = signal;
+                    signal.previous = previous;
+                } else if (type == "before") {
+                    // add to beginning
+                    dispatcher[type] = signal;
+                    signal.next = previous;
+                    previous.previous = signal;
+                }
+            } else {
+                // around or first one just replaces
+                dispatcher[type] = signal;
+            }
+            return signal;
         }
 
-        eBus.aspect = aspect;
+        function aspect(type) {
+            return function (target, methodName, advice, receiveArguments) {
+                var existing = target[methodName], dispatcher;
+                if (!existing || existing.target != target) {
+                    // no dispatcher in place
+                    target[methodName] = dispatcher = function () {
+                        var executionId = dispatcher.nextId;
+                        // before advice
+                        var args = arguments;
+                        var before = dispatcher.before;
+                        while (before) {
+                            if (before.advice) {
+                                args = before.advice.apply(this, args) || args;
+                            }
+                            before = before.next;
+                        }
+                        // around advice
+                        if (dispatcher.around) {
+                            var results = dispatcher.around.advice(this, args);
+                        }
+                        // after advice
+                        var after = dispatcher.after;
+                        while (after && after.id < executionId) {
+                            if (after.advice) {
+                                if (after.receiveArguments) {
+                                    var newResults = after.advice.apply(this, args);
+                                    // change the return value only if a new value was returned
+                                    results = newResults === undefined ? results : newResults;
+                                } else {
+                                    results = after.advice.call(this, results, args);
+                                }
+                            }
+                            after = after.next;
+                        }
+                        return results;
+                    };
+                    if (existing) {
+                        dispatcher.around = {
+                            advice: function (target, args) {
+                                return existing.apply(target, args);
+                            }
+                        };
+                    }
+                    dispatcher.target = target;
+                    dispatcher.nextId = dispatcher.nextId || 0;
+                }
+                var results = advise((dispatcher || existing), type, advice, receiveArguments);
+                advice = null;
+                return results;
+            };
+        }
+
+        var after = aspect("after");
+        /*=====
+         after = function(target, methodName, advice, receiveArguments){
+         // summary:
+         //		The "after" export of the aspect module is a function that can be used to attach
+         //		"after" advice to a method. This function will be executed after the original method
+         //		is executed. By default the function will be called with a single argument, the return
+         //		value of the original method, or the the return value of the last executed advice (if a previous one exists).
+         //		The fourth (optional) argument can be set to true to so the function receives the original
+         //		arguments (from when the original method was called) rather than the return value.
+         //		If there are multiple "after" advisors, they are executed in the order they were registered.
+         // target: Object
+         //		This is the target object
+         // methodName: String
+         //		This is the name of the method to attach to.
+         // advice: Function
+         //		This is function to be called after the original method
+         // receiveArguments: Boolean?
+         //		If this is set to true, the advice function receives the original arguments (from when the original mehtod
+         //		was called) rather than the return value of the original/previous method.
+         // returns:
+         //		A signal object that can be used to cancel the advice. If remove() is called on this signal object, it will
+         //		stop the advice function from being executed.
+         };
+         =====*/
+
+        var before = aspect("before");
+        /*=====
+         before = function(target, methodName, advice){
+         // summary:
+         //		The "before" export of the aspect module is a function that can be used to attach
+         //		"before" advice to a method. This function will be executed before the original method
+         //		is executed. This function will be called with the arguments used to call the method.
+         //		This function may optionally return an array as the new arguments to use to call
+         //		the original method (or the previous, next-to-execute before advice, if one exists).
+         //		If the before method doesn't return anything (returns undefined) the original arguments
+         //		will be preserved.
+         //		If there are multiple "before" advisors, they are executed in the reverse order they were registered.
+         // target: Object
+         //		This is the target object
+         // methodName: String
+         //		This is the name of the method to attach to.
+         // advice: Function
+         //		This is function to be called before the original method
+         };
+         =====*/
+
+        var around = aspect("around");
+        /*=====
+         around = function(target, methodName, advice){
+         // summary:
+         //		The "around" export of the aspect module is a function that can be used to attach
+         //		"around" advice to a method. The advisor function is immediately executed when
+         //		the around() is called, is passed a single argument that is a function that can be
+         //		called to continue execution of the original method (or the next around advisor).
+         //		The advisor function should return a function, and this function will be called whenever
+         //		the method is called. It will be called with the arguments used to call the method.
+         //		Whatever this function returns will be returned as the result of the method call (unless after advise changes it).
+         // example:
+         //		If there are multiple "around" advisors, the most recent one is executed first,
+         //		which can then delegate to the next one and so on. For example:
+         //		|	around(obj, "foo", function(originalFoo){
+         //		|		return function(){
+         //		|			var start = new Date().getTime();
+         //		|			var results = originalFoo.apply(this, arguments); // call the original
+         //		|			var end = new Date().getTime();
+         //		|			console.log("foo execution took " + (end - start) + " ms");
+         //		|			return results;
+         //		|		};
+         //		|	});
+         // target: Object
+         //		This is the target object
+         // methodName: String
+         //		This is the name of the method to attach to.
+         // advice: Function
+         //		This is function to be called around the original method
+         };
+         =====*/
 
         /**
-         * the handler called before named method invocation
-         * @param name
-         * @param handler
-         * @return {EventBus}
+         * The provided advising function will be called before the main method is called
+         * @param methodName
+         * @param advisingFunction
+         * @return {Handler}
          */
-        eBus.before = function (name, handler) {
-            return eBus.aspect(name, "before", handler);
+        eBus.before = function (methodName, advisingFunction) {
+            return before(_EventBus_, methodName, advisingFunction);
         };
 
         /**
-         * the handler called after named method invocation
-         * @param name
-         * @param handler
-         * @return {EventBus}
+         * The provided advising function will be called after the main method is called
+         * @param methodName
+         * @param advisingFunction
+         * @param receiveArguments
+         * @return {Handler}
          */
 
-        eBus.after = function (name, handler) {
-            return eBus.aspect(name, "after", handler);
+        eBus.after = function (methodName, advisingFunction, receiveArguments) {
+            return after(_EventBus_, methodName, advisingFunction, receiveArguments);
         };
 
         /**
-         * the handler called before and after named method invocation
+         * the advisingFactory called before and after named method invocation
          * @param name
-         * @param handler
-         * @return {EventBus}
+         * @param advisingFactory
+         * @return {Handler}
          */
-        eBus.around = function (name, handler) {
-            return eBus.aspect(name, "around", handler);
+        eBus.around = function (name, advisingFactory) {
+            return eBus.aspect(_EventBus_, name, advisingFactory);
         };
+
+        eBus.aspect = {
+            around: around,
+            before: before,
+            after: after
+        }
     });
 
     EventBus.plugin(function (eBus) {
-        eBus.fn.beforeEmit = function () {
+        /**
+         * the stub called before listener trigger
+         * @param listener
+         * @param event
+         * @param otherListenerArg..
+         */
+        eBus.fn.beforeTriggerListener = function (listener, event, otherListenerArg) {
+
+        };
+        /**
+         * the stub called after listener trigger
+         * @param listener
+         * @param event
+         * @param otherListenerArg..
+         */
+        eBus.fn.afterTriggerListener = function (listener, event, otherListenerArg) {
 
         };
 
-        eBus.fn.afterEmit = function () {
+        eBus.DEFAULT.EXCLUDE_NAMES.push("beforeTriggerListener", "afterTriggerListener");
 
+        function isMatch(eventType, event, condition, args) {
+            if (typeof eventType == "string") {
+                eventType = new RegExp(eventType);
+            }
+            return eBus.isFunction(condition) ?
+                (eventType.test(event.type) && condition.apply(this, args)) :
+                eventType.test(event.type)
+        }
+
+        eBus.beforeTriggerListener = function (eventType, fn, condition) {
+            return eBus.before("beforeTriggerListener", function (listener, event) {
+                if (isMatch(eventType, event, condition, slice(arguments)))
+                    return fn.apply(this, eBus.slice(arguments));
+            });
+        };
+
+        eBus.afterTriggerListener = function (eventType, fn, condition) {
+            return eBus.before("afterTriggerListener", function (listener, event) {
+                if (isMatch(eventType, event, condition, slice(arguments)))
+                    return fn.apply(this, eBus.slice(arguments));
+            });
         };
     });
 
