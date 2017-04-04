@@ -76,7 +76,7 @@
 				var numOfCallbacks = listeners[type].length;
 				for(var i=0; i<numOfCallbacks; i++) {
 					var listener = listeners[type][i];
-					if(listener && listener.callback && this.listeners.indexOf(listener) > -1) {					
+					if(listener && listener.callback) {					
 						var concatArgs = args.concat(listener.args);
 						listener.callback.apply(listener.scope, concatArgs);
 					}
