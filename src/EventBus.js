@@ -14,12 +14,12 @@
 		this.listeners = {};
 	};
 	EventBusClass.prototype = {
-		addEventListener:function(type, callback, scope) {
+		addEventListener: function(type, callback, scope) {
 			var args = [];
 			var numOfArgs = arguments.length;
 			for(var i=0; i<numOfArgs; i++){
 				args.push(arguments[i]);
-			}		
+			}
 			args = args.length > 3 ? args.splice(3, args.length-1) : [];
 			if(typeof this.listeners[type] != "undefined") {
 				this.listeners[type].push({scope:scope, callback:callback, args:args});
@@ -27,14 +27,14 @@
 				this.listeners[type] = [{scope:scope, callback:callback, args:args}];
 			}
 		},
-		removeEventListener:function(type, callback, scope) {
+		removeEventListener: function(type, callback, scope) {
 			if(typeof this.listeners[type] != "undefined") {
 				var numOfCallbacks = this.listeners[type].length;
 				var newArray = [];
 				for(var i=0; i<numOfCallbacks; i++) {
 					var listener = this.listeners[type][i];
 					if(listener.scope == scope && listener.callback == callback) {
-						
+
 					} else {
 						newArray.push(listener);
 					}
@@ -42,7 +42,7 @@
 				this.listeners[type] = newArray;
 			}
 		},
-		hasEventListener:function(type, callback, scope) {
+		hasEventListener: function(type, callback, scope) {
 			if(typeof this.listeners[type] != "undefined") {
 				var numOfCallbacks = this.listeners[type].length;
 				if(callback === undefined && scope === undefined){
@@ -57,33 +57,33 @@
 			}
 			return false;
 		},
-		dispatch:function(type, target) {
+		dispatch: function(type, target) {
 			var event = {
-				type:type,
-				target:target
+				type: type,
+				target: target
 			};
 			var args = [];
 			var numOfArgs = arguments.length;
 			for(var i=0; i<numOfArgs; i++){
 				args.push(arguments[i]);
-			};				
+			};
 			args = args.length > 2 ? args.splice(2, args.length-1) : [];
 			args = [event].concat(args);
-			
-			var listeners = this.listeners.slice();
-			
-			if(typeof listeners[type] != "undefined") {
-				var numOfCallbacks = listeners[type].length;
+
+
+			if(typeof this.listeners[type] != "undefined") {
+				var listeners = this.listeners[type].slice();
+				var numOfCallbacks = listeners.length;
 				for(var i=0; i<numOfCallbacks; i++) {
-					var listener = listeners[type][i];
-					if(listener && listener.callback) {					
+					var listener = listeners[i];
+					if(listener && listener.callback) {
 						var concatArgs = args.concat(listener.args);
 						listener.callback.apply(listener.scope, concatArgs);
 					}
 				}
 			}
 		},
-		getEvents:function() {
+		getEvents: function() {
 			var str = "";
 			for(var type in this.listeners) {
 				var numOfCallbacks = this.listeners[type].length;
