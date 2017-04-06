@@ -58,7 +58,6 @@
 			return false;
 		},
 		dispatch:function(type, target) {
-			var numOfListeners = 0;
 			var event = {
 				type:type,
 				target:target
@@ -70,14 +69,16 @@
 			};				
 			args = args.length > 2 ? args.splice(2, args.length-1) : [];
 			args = [event].concat(args);
-			if(typeof this.listeners[type] != "undefined") {
-				var numOfCallbacks = this.listeners[type].length;
+			
+			var listeners = this.listeners.slice();
+			
+			if(typeof listeners[type] != "undefined") {
+				var numOfCallbacks = listeners[type].length;
 				for(var i=0; i<numOfCallbacks; i++) {
-					var listener = this.listeners[type][i];
+					var listener = listeners[type][i];
 					if(listener && listener.callback) {					
 						var concatArgs = args.concat(listener.args);
 						listener.callback.apply(listener.scope, concatArgs);
-						numOfListeners += 1;
 					}
 				}
 			}
