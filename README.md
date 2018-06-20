@@ -70,10 +70,10 @@ EventBus.getEvents()
 For debugging purposes, add callbacks to fire when events are dispatched.
 
 ```js
-var onDispatch = function(type) { console.log("[EventBus] Dispatching: " + type); };
-var onCallback = function(type) { console.log("[EventBus] Handling: " + type); };
-var onAdd = function(type) { console.log("[EventBus] Adding Listener: " + type); };
-var onRemove = function(type) { console.log("[EventBus] Removing Listener: " + type); };
+var onDispatch = function(type) { console.log("[EventBus] Dispatching: " + type) }
+var onCallback = function(type) { console.log("[EventBus] Handling: " + type) }
+var onAdd = function(type) { console.log("[EventBus] Adding Listener: " + type) }
+var onRemove = function(type) { console.log("[EventBus] Removing Listener: " + type) }
 EventBus.watch(onDispatch, onCallback, onAdd, onRemove)
 ```
 
