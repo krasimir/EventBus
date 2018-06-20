@@ -84,7 +84,7 @@
 				for(var i=0; i<numOfCallbacks; i++) {
 					var listener = listeners[i];
 					if(listener && listener.callback) {
-						if (this.watchers.onDispatch != null) this.watchers.onCallback(type);
+						if (this.watchers.onCallback != null) this.watchers.onCallback(type);
 						var concatArgs = args.concat(listener.args);
 						listener.callback.apply(listener.scope, concatArgs);
 					}
