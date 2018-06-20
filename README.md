@@ -58,10 +58,23 @@ EventBus.dispatch(type, target, args ...)
 
 ### `getEvents`
 
-For debugging purpose, it prints out the added listeners.
+For debugging purposes, it prints out the added listeners.
 
 ```js
 EventBus.getEvents()
+```
+
+
+### `watch`
+
+For debugging purposes, add callbacks to fire when events are dispatched.
+
+```js
+var onDispatch = function(type) { console.log("[EventBus] Dispatching: " + type); };
+var onCallback = function(type) { console.log("[EventBus] Handling: " + type); };
+var onAdd = function(type) { console.log("[EventBus] Adding Listener: " + type); };
+var onRemove = function(type) { console.log("[EventBus] Removing Listener: " + type); };
+EventBus.watch(onDispatch, onCallback, onAdd, onRemove)
 ```
 
 ## Usage
