@@ -12,9 +12,12 @@
 	var EventBusClass = {};
 	EventBusClass = function() {
 		this.listeners = {};
+		this.watchers = { onDispatch: null, onCallback: null, onAdd: null, onRemove: null };
 	};
 	EventBusClass.prototype = {
 		addEventListener: function(type, callback, scope) {
+			if (this.watchers.onAdd != null) this.watchers.onAdd(type);
+			
 			var args = [];
 			var numOfArgs = arguments.length;
 			for(var i=0; i<numOfArgs; i++){
@@ -28,6 +31,8 @@
 			}
 		},
 		removeEventListener: function(type, callback, scope) {
+			if (this.watchers.onRemove != null) this.watchers.onRemove(type);
+			
 			if(typeof this.listeners[type] != "undefined") {
 				var numOfCallbacks = this.listeners[type].length;
 				var newArray = [];
@@ -58,6 +63,8 @@
 			return false;
 		},
 		dispatch: function(type, target) {
+			if (this.watchers.onDispatch != null) this.watchers.onDispatch(type);
+			
 			var event = {
 				type: type,
 				target: target
@@ -77,6 +84,7 @@
 				for(var i=0; i<numOfCallbacks; i++) {
 					var listener = listeners[i];
 					if(listener && listener.callback) {
+						if (this.watchers.onDispatch != null) this.watchers.onCallback(type);
 						var concatArgs = args.concat(listener.args);
 						listener.callback.apply(listener.scope, concatArgs);
 					}
@@ -94,7 +102,15 @@
 				}
 			}
 			return str;
-		}
+		},	
+		watch: function(onDispatch, onCallback, onAdd, onRemove) {
+            		this.watchers = {
+				onDispatch: onDispatch,
+				onCallback: onCallback,
+				onAdd: onAdd,
+				onRemove: onRemove
+            		};
+        	}
 	};
 	var EventBus = new EventBusClass();
 	return EventBus;
