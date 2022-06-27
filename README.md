@@ -141,3 +141,5 @@ var handler = function() {
 EventBus.addEventListener('EXAMPLE_EVENT', handler);
 EventBus.removeEventListener('EXAMPLE_EVENT', handler);
 ```
+This pull request adapts your library to OpenHarmony. The code has passed the
+test and verification. Please help integrate this pull request. Thank you very much.
